@@ -1,6 +1,28 @@
 modules = ["nodejs-20", "web"]
+run = "cd /home/runner/workspace/client && npx vite build && cd /home/runner/workspace/server && npx tsx src/index.ts"
+
 [agent]
 expertMode = true
 
 [nix]
 channel = "stable-25_05"
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 5173
+externalPort = 80
+
+[[ports]]
+localPort = 5174
+externalPort = 3000
+
+[[ports]]
+localPort = 5175
+externalPort = 3001
+
+[[ports]]
+localPort = 5176
+externalPort = 3002

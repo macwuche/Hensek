@@ -30,7 +30,7 @@ const PORT = parseInt(process.env.PORT || "5000");
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.NODE_ENV === "production" ? false : ["http://localhost:5173"],
+  origin: (origin, cb) => cb(null, true),
   credentials: true,
 }));
 app.use(express.json());
@@ -90,7 +90,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: process.env.NODE_ENV === "production" ? "Internal server error" : err.message });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`\n🚀 Hensek server running on http://localhost:${PORT}`);
   console.log(`📊 API: http://localhost:${PORT}/api/health`);
   console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);

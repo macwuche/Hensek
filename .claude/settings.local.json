@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('child_process'\\).execSync\\('cd server && node -e \\\\\"require\\(\\\\\\\\\\\\\"./src/index.ts\\\\\\\\\\\\\"\\)\\\\\"', {stdio: \\\\\"inherit\\\\\"}\\)\")",
+      "Bash(npm install *)",
+      "Bash(timeout 10 npx tsx src/index.ts)",
+      "Bash(timeout 30 npx vite build)",
+      "Bash(npm run *)",
+      "Bash(pkill -f \"tsx watch\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(pkill -f \"concurrently\")",
+      "Bash(fuser -k 5000/tcp)",
+      "Bash(fuser -k 5173/tcp)",
+      "Bash(fuser -k 5174/tcp)",
+      "Bash(lsof -i:5000 -i:5173 -i:5174 -i:5175)",
+      "Bash(netstat -tlnp)",
+      "Bash(awk '{print $2}')",
+      "Bash(awk 'NR>1 {split\\($2,a,\":\"\\); printf \"%d\\\\n\", strtonum\\(\"0x\"a[2]\\)}')",
+      "Bash(grep -E \"^\\(3000|4000|8080|8000|8888\\)$\")",
+      "Bash(awk 'NR>1 {cmd=\"printf \\\\\"%d\\\\\" 0x\"substr\\($2,index\\($2,\":\"\\)+1\\); cmd | getline port; close\\(cmd\\); print port}')",
+      "Bash(npx vite *)",
+      "Bash(timeout 8 npx tsx src/index.ts)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(curl -s http://localhost:5176/)",
+      "Bash(curl -s http://localhost:8080/api/health)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"Vite HTTP status: %{http_code}\\\\n\" http://localhost:5173/)"
+    ]
+  }
+}

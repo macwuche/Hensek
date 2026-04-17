@@ -12,6 +12,7 @@
     "bcryptjs": "^2.4.3",
     "connect-pg-simple": "^9.0.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "^0.30.10",
     "drizzle-zod": "^0.5.1",
     "express": "^4.18.2",
@@ -20,8 +21,8 @@
     "nodemailer": "^6.9.9",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
-    "pg": "^8.11.3",
     "pdfkit": "^0.14.0",
+    "pg": "^8.11.3",
     "resend": "^3.2.0",
     "ws": "^8.16.0",
     "zod": "^3.22.4"
@@ -36,8 +37,8 @@
     "@types/nodemailer": "^6.4.14",
     "@types/passport": "^1.0.16",
     "@types/passport-local": "^1.0.38",
-    "@types/pg": "^8.11.2",
     "@types/pdfkit": "^0.13.4",
+    "@types/pg": "^8.11.2",
     "@types/ws": "^8.5.10",
     "tsx": "^4.7.1",
     "typescript": "^5.4.3"
