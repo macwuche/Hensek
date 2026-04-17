@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 55 100% 97%;
+    --foreground: 20 14% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 10%;
+    --primary: 47 97% 48%;
+    --primary-foreground: 20 14% 10%;
+    --secondary: 55 80% 92%;
+    --secondary-foreground: 20 14% 10%;
+    --muted: 55 40% 93%;
+    --muted-foreground: 20 10% 45%;
+    --accent: 47 97% 48%;
+    --accent-foreground: 20 14% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 55 25% 85%;
+    --input: 55 25% 85%;
+    --ring: 47 97% 48%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply text-foreground;
+    font-family: "Inter", system-ui, sans-serif;
+    background: linear-gradient(135deg, #F5F0DC 0%, #FEFCE8 55%, #FEF9C3 100%);
+    min-height: 100vh;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .hensek-card {
+    @apply bg-white rounded-2xl shadow-sm border border-white/60 p-5;
+  }
+
+  .hensek-card-sm {
+    @apply bg-white rounded-xl shadow-sm border border-white/60 p-4;
+  }
+
+  .hensek-stat-card {
+    @apply bg-white rounded-2xl shadow-sm border border-white/60 p-5 flex items-center gap-4;
+  }
+
+  .hensek-nav-pill {
+    @apply bg-[#1A1A2E] rounded-full px-2 py-1.5 flex items-center gap-1;
+  }
+
+  .hensek-nav-item {
+    @apply px-3 py-1.5 rounded-full text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all cursor-pointer;
+  }
+
+  .hensek-nav-item-active {
+    @apply px-3 py-1.5 rounded-full text-sm font-medium bg-hensek-yellow text-hensek-dark transition-all cursor-pointer;
+  }
+
+  .hensek-badge-yellow {
+    @apply bg-hensek-yellow/20 text-yellow-800 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .hensek-badge-green {
+    @apply bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .hensek-badge-red {
+    @apply bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .hensek-badge-blue {
+    @apply bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .hensek-badge-gray {
+    @apply bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .hensek-input {
+    @apply w-full px-3 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-hensek-yellow/50 focus:border-hensek-yellow transition-all;
+  }
+
+  .hensek-btn {
+    @apply px-4 py-2 rounded-xl font-medium text-sm transition-all focus:outline-none focus:ring-2 focus:ring-hensek-yellow/50;
+  }
+
+  .hensek-btn-primary {
+    @apply hensek-btn bg-hensek-dark text-white hover:bg-hensek-dark/80;
+  }
+
+  .hensek-btn-yellow {
+    @apply hensek-btn bg-hensek-yellow text-hensek-dark hover:bg-yellow-400;
+  }
+
+  .hensek-btn-outline {
+    @apply hensek-btn bg-transparent border border-border text-foreground hover:bg-white;
+  }
+
+  .hensek-btn-danger {
+    @apply hensek-btn bg-red-500 text-white hover:bg-red-600;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #EAB308 transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #EAB308;
+    border-radius: 9999px;
+  }
+}
+
+/* Leaflet map overrides */
+.leaflet-container {
+  border-radius: 1rem;
+  z-index: 1;
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile menu */
+@media (max-width: 768px) {
+  .hensek-nav-pill {
+    @apply hidden;
+  }
+}
