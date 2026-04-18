@@ -6,7 +6,7 @@ import { broadcast, broadcastToRole } from "../lib/websocket.js";
 const router = Router();
 
 // POST /api/attendance/clock-in
-router.post("/clock-in", requireAuth, (req, res) => {
+router.post("/clock-in", requireAuth, async (req, res) => {
   const userId = req.user!.id;
   const user = storage.getUserById(userId);
   if (!user) return res.status(404).json({ error: "User not found" });
@@ -19,7 +19,7 @@ router.post("/clock-in", requireAuth, (req, res) => {
   const { siteId } = req.body;
   const clockInTime = new Date();
 
-  const record = storage.createAttendance({
+  const record = await storage.createAttendance({
     userId,
     clockIn: clockInTime,
     date: today,
@@ -27,7 +27,7 @@ router.post("/clock-in", requireAuth, (req, res) => {
     isOvertime: false,
   });
 
-  storage.updateUser(userId, { isClockedIn: true, clockInTime });
+  await storage.updateUser(userId, { isClockedIn: true, clockInTime });
 
   // Notify safety
   broadcastToRole("safety", {
@@ -44,7 +44,7 @@ router.post("/clock-in", requireAuth, (req, res) => {
 });
 
 // POST /api/attendance/clock-out
-router.post("/clock-out", requireAuth, (req, res) => {
+router.post("/clock-out", requireAuth, async (req, res) => {
   const userId = req.user!.id;
   const user = storage.getUserById(userId);
   if (!user) return res.status(404).json({ error: "User not found" });
@@ -60,14 +60,14 @@ router.post("/clock-out", requireAuth, (req, res) => {
   const isOvertime = totalMinutes > standardMinutes;
   const overtimeMinutes = isOvertime ? totalMinutes - standardMinutes : 0;
 
-  const updated = storage.updateAttendance(record.id, {
+  const updated = await storage.updateAttendance(record.id, {
     clockOut,
     totalMinutes,
     isOvertime,
     overtimeMinutes,
   });
 
-  storage.updateUser(userId, { isClockedIn: false, clockInTime: undefined });
+  await storage.updateUser(userId, { isClockedIn: false, clockInTime: undefined });
 
   broadcastToRole("safety", { type: "staff_clocked_out", userId, userName: user.name, time: clockOut, totalMinutes });
   broadcast({ type: "attendance_update" });
@@ -76,23 +76,23 @@ router.post("/clock-out", requireAuth, (req, res) => {
 });
 
 // POST /api/attendance/break-start
-router.post("/break-start", requireAuth, (req, res) => {
+router.post("/break-start", requireAuth, async (req, res) => {
   const userId = req.user!.id;
   const record = storage.getTodayAttendanceByUser(userId);
   if (!record || !record.clockIn) return res.status(400).json({ error: "Not clocked in" });
   if (record.breakStart && !record.breakEnd) return res.status(400).json({ error: "Already on break" });
 
-  const updated = storage.updateAttendance(record.id, { breakStart: new Date() });
+  const updated = await storage.updateAttendance(record.id, { breakStart: new Date() });
   res.json(updated);
 });
 
 // POST /api/attendance/break-end
-router.post("/break-end", requireAuth, (req, res) => {
+router.post("/break-end", requireAuth, async (req, res) => {
   const userId = req.user!.id;
   const record = storage.getTodayAttendanceByUser(userId);
   if (!record || !record.breakStart) return res.status(400).json({ error: "Not on break" });
 
-  const updated = storage.updateAttendance(record.id, { breakEnd: new Date() });
+  const updated = await storage.updateAttendance(record.id, { breakEnd: new Date() });
   res.json(updated);
 });
 

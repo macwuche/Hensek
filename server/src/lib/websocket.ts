@@ -15,7 +15,7 @@ export function setupWebSocket(wss: WebSocketServer) {
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     let userId: number | null = null;
 
-    ws.on("message", (raw) => {
+    ws.on("message", async (raw) => {
       try {
         const msg = JSON.parse(raw.toString());
 
@@ -24,7 +24,7 @@ export function setupWebSocket(wss: WebSocketServer) {
           const user = storage.getUserById(userId!);
           if (!user) { ws.close(); return; }
           clients.set(userId!, { ws, userId: userId!, role: user.role, departmentSlug: user.departmentSlug });
-          storage.updateUser(userId!, { isOnline: true });
+          await storage.updateUser(userId!, { isOnline: true });
           broadcastUserStatus(userId!, true);
           ws.send(JSON.stringify({ type: "auth_ok", userId }));
         }
@@ -32,7 +32,7 @@ export function setupWebSocket(wss: WebSocketServer) {
         if (!userId) return;
 
         if (msg.type === "location_update") {
-          storage.updateUser(userId, {
+          await storage.updateUser(userId, {
             lastLat: msg.lat,
             lastLng: msg.lng,
             lastLocationUpdate: new Date(),
@@ -43,7 +43,7 @@ export function setupWebSocket(wss: WebSocketServer) {
         if (msg.type === "chat_message") {
           const user = storage.getUserById(userId);
           if (!user) return;
-          const chatMsg = storage.createChatMessage({
+          const chatMsg = await storage.createChatMessage({
             roomId: msg.roomId,
             senderId: userId,
             senderName: user.name,
@@ -56,15 +56,15 @@ export function setupWebSocket(wss: WebSocketServer) {
         if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
         }
-      } catch (_) {
-        // ignore malformed messages
+      } catch (err) {
+        console.error("[ws:message]", err);
       }
     });
 
     ws.on("close", () => {
       if (userId) {
         clients.delete(userId);
-        storage.updateUser(userId, { isOnline: false });
+        storage.updateUser(userId, { isOnline: false }).catch(err => console.error("[ws:close]", err));
         broadcastUserStatus(userId, false);
       }
     });
@@ -72,7 +72,7 @@ export function setupWebSocket(wss: WebSocketServer) {
     ws.on("error", () => {
       if (userId) {
         clients.delete(userId);
-        storage.updateUser(userId, { isOnline: false });
+        storage.updateUser(userId, { isOnline: false }).catch(err => console.error("[ws:error]", err));
       }
     });
   });

@@ -44,7 +44,7 @@ router.get("/", requireRole("md", "safety"), (req, res) => {
 });
 
 // POST /api/duties — Safety assigns duty
-router.post("/", requireRole("md", "safety"), (req, res) => {
+router.post("/", requireRole("md", "safety"), async (req, res) => {
   const { userId, siteId, date, shiftStart, shiftEnd, taskDescription } = req.body;
   if (!userId || !siteId || !date || !shiftStart || !shiftEnd || !taskDescription) {
     return res.status(400).json({ error: "All fields are required" });
@@ -55,7 +55,7 @@ router.post("/", requireRole("md", "safety"), (req, res) => {
   if (!user) return res.status(404).json({ error: "User not found" });
   if (!site) return res.status(404).json({ error: "Site not found" });
 
-  const duty = storage.createDuty({
+  const duty = await storage.createDuty({
     userId: parseInt(userId),
     siteId: parseInt(siteId),
     date,
@@ -67,7 +67,7 @@ router.post("/", requireRole("md", "safety"), (req, res) => {
   });
 
   // Notify the staff member
-  storage.createNotification({
+  await storage.createNotification({
     userId: parseInt(userId),
     type: "duty_assigned",
     title: "Duty Assignment",
@@ -80,7 +80,7 @@ router.post("/", requireRole("md", "safety"), (req, res) => {
 });
 
 // PATCH /api/duties/:id/status — staff updates duty status
-router.patch("/:id/status", requireAuth, (req, res) => {
+router.patch("/:id/status", requireAuth, async (req, res) => {
   const { status } = req.body;
   const duty = storage.getDutyById(parseInt(req.params.id));
   if (!duty) return res.status(404).json({ error: "Duty not found" });
@@ -90,16 +90,16 @@ router.patch("/:id/status", requireAuth, (req, res) => {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  const updated = storage.updateDuty(duty.id, { status });
+  const updated = await storage.updateDuty(duty.id, { status });
   broadcastToRole("safety", { type: "duty_status_update", dutyId: duty.id, status, userId: duty.userId });
   res.json(updated);
 });
 
 // DELETE /api/duties/:id — Safety + MD
-router.delete("/:id", requireRole("md", "safety"), (req, res) => {
+router.delete("/:id", requireRole("md", "safety"), async (req, res) => {
   const duty = storage.getDutyById(parseInt(req.params.id));
   if (!duty) return res.status(404).json({ error: "Duty not found" });
-  storage.updateDuty(duty.id, { status: "missed" });
+  await storage.updateDuty(duty.id, { status: "missed" });
   broadcastToUser(duty.userId, { type: "duty_cancelled", dutyId: duty.id });
   res.json({ message: "Duty cancelled" });
 });

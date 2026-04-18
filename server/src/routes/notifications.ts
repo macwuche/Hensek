@@ -17,14 +17,14 @@ router.get("/unread-count", requireAuth, (req, res) => {
 });
 
 // PATCH /api/notifications/:id/read
-router.patch("/:id/read", requireAuth, (req, res) => {
-  storage.markNotificationRead(parseInt(req.params.id));
+router.patch("/:id/read", requireAuth, async (req, res) => {
+  await storage.markNotificationRead(parseInt(req.params.id));
   res.json({ ok: true });
 });
 
 // PATCH /api/notifications/read-all
-router.patch("/read-all", requireAuth, (req, res) => {
-  storage.markAllNotificationsRead(req.user!.id);
+router.patch("/read-all", requireAuth, async (req, res) => {
+  await storage.markAllNotificationsRead(req.user!.id);
   res.json({ ok: true });
 });
 

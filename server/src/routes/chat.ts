@@ -5,7 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 const router = Router();
 
 // GET /api/chat/rooms — get rooms accessible to this user
-router.get("/rooms", requireAuth, (req, res) => {
+router.get("/rooms", requireAuth, async (req, res) => {
   const { role, id: userId } = req.user!;
   let rooms;
 
@@ -16,20 +16,20 @@ router.get("/rooms", requireAuth, (req, res) => {
     rooms = storage.getRoomsForUser(userId);
 
     // Also ensure staff-specific rooms to dept exist
-    const staffRooms = ["hr", "safety", "security"].map(dept => {
-      const roomId = `staff-${userId}-${dept}`;
-      let room = storage.getChatRoom(roomId);
-      if (!room) {
-        room = storage.createChatRoom({
+    const staffRooms = await Promise.all(
+      ["hr", "safety", "security"].map(async dept => {
+        const roomId = `staff-${userId}-${dept}`;
+        const existing = storage.getChatRoom(roomId);
+        if (existing) return existing;
+        return storage.createChatRoom({
           id: roomId,
           name: `Me ↔ ${dept.charAt(0).toUpperCase() + dept.slice(1)}`,
           type: "staff_to_dept",
           participants: [`staff-${userId}`, dept],
           createdAt: new Date(),
         });
-      }
-      return room;
-    });
+      })
+    );
     rooms = [...rooms, ...staffRooms];
   }
 
@@ -59,14 +59,14 @@ router.get("/rooms/:roomId/messages", requireAuth, (req, res) => {
 });
 
 // POST /api/chat/rooms/:roomId/messages — HTTP fallback (WS is primary)
-router.post("/rooms/:roomId/messages", requireAuth, (req, res) => {
+router.post("/rooms/:roomId/messages", requireAuth, async (req, res) => {
   const { content } = req.body;
   if (!content) return res.status(400).json({ error: "Content is required" });
 
   const user = storage.getUserById(req.user!.id);
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  const msg = storage.createChatMessage({
+  const msg = await storage.createChatMessage({
     roomId: req.params.roomId,
     senderId: req.user!.id,
     senderName: user.name,
@@ -78,8 +78,8 @@ router.post("/rooms/:roomId/messages", requireAuth, (req, res) => {
 });
 
 // PATCH /api/chat/messages/:id/read
-router.patch("/messages/:id/read", requireAuth, (req, res) => {
-  storage.markMessageRead(parseInt(req.params.id), req.user!.id);
+router.patch("/messages/:id/read", requireAuth, async (req, res) => {
+  await storage.markMessageRead(parseInt(req.params.id), req.user!.id);
   res.json({ ok: true });
 });
 

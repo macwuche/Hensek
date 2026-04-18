@@ -12,13 +12,13 @@ router.get("/", requireAuth, (req, res) => {
 });
 
 // POST /api/announcements — HR + MD
-router.post("/", requireRole("md", "hr"), (req, res) => {
+router.post("/", requireRole("md", "hr"), async (req, res) => {
   const { title, content, targetRoles, priority, expiresAt } = req.body;
   if (!title || !content) return res.status(400).json({ error: "title and content are required" });
 
   const roles = targetRoles || ["md", "hr", "safety", "security", "staff"];
 
-  const ann = storage.createAnnouncement({
+  const ann = await storage.createAnnouncement({
     title,
     content,
     authorId: req.user!.id,
@@ -29,31 +29,31 @@ router.post("/", requireRole("md", "hr"), (req, res) => {
 
   // Notify all users with matching roles
   const allUsers = storage.getAllUsers().filter(u => roles.includes(u.role) && u.id !== req.user!.id);
-  allUsers.forEach(u => {
+  await Promise.all(allUsers.map(u =>
     storage.createNotification({
       userId: u.id,
       type: "announcement",
       title: `Announcement: ${title}`,
       body: content.substring(0, 100),
       link: "/announcements",
-    });
-  });
+    })
+  ));
 
   broadcast({ type: "new_announcement", announcement: ann });
   res.status(201).json(ann);
 });
 
 // PUT /api/announcements/:id — HR + MD
-router.put("/:id", requireRole("md", "hr"), (req, res) => {
+router.put("/:id", requireRole("md", "hr"), async (req, res) => {
   const { title, content, targetRoles, priority } = req.body;
-  const updated = storage.updateAnnouncement(parseInt(req.params.id), { title, content, targetRoles, priority });
+  const updated = await storage.updateAnnouncement(parseInt(req.params.id), { title, content, targetRoles, priority });
   if (!updated) return res.status(404).json({ error: "Announcement not found" });
   res.json(updated);
 });
 
 // DELETE /api/announcements/:id — HR + MD
-router.delete("/:id", requireRole("md", "hr"), (req, res) => {
-  const deleted = storage.deleteAnnouncement(parseInt(req.params.id));
+router.delete("/:id", requireRole("md", "hr"), async (req, res) => {
+  const deleted = await storage.deleteAnnouncement(parseInt(req.params.id));
   if (!deleted) return res.status(404).json({ error: "Announcement not found" });
   broadcast({ type: "announcement_deleted", id: req.params.id });
   res.json({ message: "Announcement deleted" });

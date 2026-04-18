@@ -33,7 +33,7 @@ router.post("/register", async (req, res) => {
     else if (dept.type === "safety") role = "safety";
     else if (dept.type === "security") role = "security";
 
-    const user = storage.createUser({
+    const user = await storage.createUser({
       email,
       passwordHash,
       name,
@@ -49,27 +49,27 @@ router.post("/register", async (req, res) => {
 
     // Notify HR users of new registration
     const hrUsers = storage.getUsersByRole("hr");
-    hrUsers.forEach(hr => {
+    await Promise.all(hrUsers.map(hr =>
       storage.createNotification({
         userId: hr.id,
         type: "new_registration",
         title: "New Staff Registration",
         body: `${name} has registered and is awaiting approval.`,
         link: "/hr/approvals",
-      });
-    });
+      })
+    ));
 
     // Notify MD
     const mdUsers = storage.getUsersByRole("md");
-    mdUsers.forEach(md => {
+    await Promise.all(mdUsers.map(md =>
       storage.createNotification({
         userId: md.id,
         type: "new_registration",
         title: "New Staff Registration",
         body: `${name} (${dept.name}) is pending approval.`,
         link: "/md/staff",
-      });
-    });
+      })
+    ));
 
     broadcast({ type: "new_registration", userName: name, dept: dept.name });
 
@@ -125,7 +125,7 @@ router.get("/me", requireAuth, (req, res) => {
 // PUT /api/auth/profile
 router.put("/profile", requireAuth, async (req, res) => {
   const { name, phone, address, emergencyContact, emergencyPhone } = req.body;
-  const updated = storage.updateUser(req.user!.id, { name, phone, address, emergencyContact, emergencyPhone });
+  const updated = await storage.updateUser(req.user!.id, { name, phone, address, emergencyContact, emergencyPhone });
   if (!updated) return res.status(404).json({ error: "User not found" });
   const { passwordHash, ...safe } = updated;
   res.json(safe);
@@ -139,7 +139,7 @@ router.put("/change-password", requireAuth, async (req, res) => {
   const valid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!valid) return res.status(400).json({ error: "Current password is incorrect" });
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  storage.updateUser(user.id, { passwordHash });
+  await storage.updateUser(user.id, { passwordHash });
   res.json({ message: "Password changed successfully" });
 });
 

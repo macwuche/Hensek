@@ -18,7 +18,7 @@ router.post("/security/generate", requireRole("security", "md"), async (req, res
 
   const period = `${fromDate.toLocaleDateString()} – ${toDate.toLocaleDateString()}`;
 
-  const report = storage.createSecurityReport({
+  const report = await storage.createSecurityReport({
     type,
     period,
     generatedBy: req.user!.id,
@@ -39,7 +39,7 @@ router.post("/security/generate", requireRole("security", "md"), async (req, res
       attachments: [{ filename: `security-report-${period}.pdf`, content: pdfBuffer, contentType: "application/pdf" }],
     });
     if (emailSent) {
-      storage.updateDept(securityDept!.id, {});
+      await storage.updateDept(securityDept!.id, {});
     }
   }
 
@@ -94,7 +94,7 @@ router.post("/safety/generate", requireRole("safety", "md"), async (req, res) =>
     };
   });
 
-  const report = storage.createSafetyReport({
+  const report = await storage.createSafetyReport({
     type,
     period,
     generatedBy: req.user!.id,

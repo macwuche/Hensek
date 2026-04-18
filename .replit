@@ -42,8 +42,13 @@ outputType = "webview"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "PORT=3001 npm run dev"
+waitForPort = 5000
 
 [deployment]
 deploymentTarget = "autoscale"
 run = ["sh", "-c", "cd server && NODE_ENV=production npx tsx src/index.ts"]
 build = ["sh", "-c", "cd client && npx vite build"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000

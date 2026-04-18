@@ -31,13 +31,13 @@ router.get("/:id", requireAuth, (req, res) => {
 });
 
 // POST /api/sites — Safety + MD registers a work site
-router.post("/", requireRole("md", "safety"), (req, res) => {
+router.post("/", requireRole("md", "safety"), async (req, res) => {
   const { name, description, lat, lng, address } = req.body;
   if (!name || lat === undefined || lng === undefined) {
     return res.status(400).json({ error: "name, lat, and lng are required" });
   }
 
-  const site = storage.createSite({
+  const site = await storage.createSite({
     name,
     description,
     lat: parseFloat(lat),
@@ -50,16 +50,16 @@ router.post("/", requireRole("md", "safety"), (req, res) => {
 });
 
 // PUT /api/sites/:id — Safety + MD
-router.put("/:id", requireRole("md", "safety"), (req, res) => {
+router.put("/:id", requireRole("md", "safety"), async (req, res) => {
   const { name, description, address, isActive } = req.body;
-  const updated = storage.updateSite(parseInt(req.params.id), { name, description, address, isActive });
+  const updated = await storage.updateSite(parseInt(req.params.id), { name, description, address, isActive });
   if (!updated) return res.status(404).json({ error: "Site not found" });
   res.json(updated);
 });
 
 // DELETE /api/sites/:id — MD only
-router.delete("/:id", requireRole("md"), (req, res) => {
-  const deleted = storage.deleteSite(parseInt(req.params.id));
+router.delete("/:id", requireRole("md"), async (req, res) => {
+  const deleted = await storage.deleteSite(parseInt(req.params.id));
   if (!deleted) return res.status(404).json({ error: "Site not found" });
   res.json({ message: "Site deleted" });
 });

@@ -3,7 +3,6 @@ import express from "express";
 import { createServer } from "http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import pg from "pg";
 import passport from "passport";
 import cors from "cors";
 import path from "path";
@@ -12,6 +11,8 @@ import { WebSocketServer } from "ws";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { configurePassport } from "./lib/passport.js";
 import { setupWebSocket } from "./lib/websocket.js";
+import { storage } from "./lib/storage.js";
+import { pool } from "./db/index.js";
 
 // Routes
 import authRouter from "./routes/auth.js";
@@ -47,20 +48,14 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploads
 app.use("/uploads", express.static(path.resolve("uploads")));
 
-// Session store — Postgres in production, in-memory in dev
-let sessionStore: session.Store | undefined;
-if (IS_PROD && process.env.DATABASE_URL) {
-  const PgStore = connectPgSimple(session);
-  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-  sessionStore = new PgStore({
+// Session — persisted in Postgres via connect-pg-simple
+const PgSession = connectPgSimple(session);
+app.use(session({
+  store: new PgSession({
     pool,
     tableName: "user_sessions",
     createTableIfMissing: true,
-  });
-}
-
-app.use(session({
-  store: sessionStore,
+  }),
   secret: process.env.SESSION_SECRET || "hensek-dev-secret-change-in-production",
   resave: false,
   saveUninitialized: false,
@@ -141,8 +136,14 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: process.env.NODE_ENV === "production" ? "Internal server error" : err.message });
 });
 
-const BIND_HOST = process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
-server.listen(PORT, BIND_HOST, () => {
+const BIND_HOST = IS_PROD ? "0.0.0.0" : "127.0.0.1";
+
+async function start() {
+  await storage.init();
+  server.listen(PORT, BIND_HOST, onListen);
+}
+
+function onListen() {
   console.log(`\n🚀 Hensek server running on http://localhost:${PORT}`);
   console.log(`📊 API: http://localhost:${PORT}/api/health`);
   console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
@@ -154,6 +155,11 @@ server.listen(PORT, BIND_HOST, () => {
     console.log(`   Security: security@hensek.com /  Security123!`);
     console.log(`   Staff:    john.doe@hensek.com /  Staff123!\n`);
   }
+}
+
+start().catch((err) => {
+  console.error("[startup] Failed to start server:", err);
+  process.exit(1);
 });
 
 export default app;

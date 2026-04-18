@@ -43,11 +43,11 @@ router.get("/:id", requireAuth, (req, res) => {
 });
 
 // PATCH /api/users/:id/approve — HR + MD
-router.patch("/:id/approve", requireRole("md", "hr"), (req, res) => {
-  const user = storage.updateUser(parseInt(req.params.id), { status: "active" });
+router.patch("/:id/approve", requireRole("md", "hr"), async (req, res) => {
+  const user = await storage.updateUser(parseInt(req.params.id), { status: "active" });
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  storage.createNotification({
+  await storage.createNotification({
     userId: user.id,
     type: "account_approved",
     title: "Account Approved",
@@ -60,12 +60,12 @@ router.patch("/:id/approve", requireRole("md", "hr"), (req, res) => {
 });
 
 // PATCH /api/users/:id/reject — HR + MD
-router.patch("/:id/reject", requireRole("md", "hr"), (req, res) => {
+router.patch("/:id/reject", requireRole("md", "hr"), async (req, res) => {
   const { reason } = req.body;
-  const user = storage.updateUser(parseInt(req.params.id), { status: "suspended" });
+  const user = await storage.updateUser(parseInt(req.params.id), { status: "suspended" });
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  storage.createNotification({
+  await storage.createNotification({
     userId: user.id,
     type: "account_rejected",
     title: "Registration Rejected",
@@ -77,12 +77,12 @@ router.patch("/:id/reject", requireRole("md", "hr"), (req, res) => {
 });
 
 // PATCH /api/users/:id/suspend — MD only
-router.patch("/:id/suspend", requireRole("md"), (req, res) => {
+router.patch("/:id/suspend", requireRole("md"), async (req, res) => {
   const { reason } = req.body;
-  const user = storage.updateUser(parseInt(req.params.id), { status: "suspended" });
+  const user = await storage.updateUser(parseInt(req.params.id), { status: "suspended" });
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  storage.createNotification({
+  await storage.createNotification({
     userId: user.id,
     type: "account_suspended",
     title: "Account Suspended",
@@ -95,17 +95,17 @@ router.patch("/:id/suspend", requireRole("md"), (req, res) => {
 });
 
 // PATCH /api/users/:id/activate — MD only
-router.patch("/:id/activate", requireRole("md"), (req, res) => {
-  const user = storage.updateUser(parseInt(req.params.id), { status: "active" });
+router.patch("/:id/activate", requireRole("md"), async (req, res) => {
+  const user = await storage.updateUser(parseInt(req.params.id), { status: "active" });
   if (!user) return res.status(404).json({ error: "User not found" });
   const { passwordHash, ...safe } = user;
   res.json(safe);
 });
 
 // PUT /api/users/:id — MD + HR update user info
-router.put("/:id", requireRole("md", "hr"), (req, res) => {
+router.put("/:id", requireRole("md", "hr"), async (req, res) => {
   const { name, phone, address, departmentSlug, departmentId, emergencyContact, emergencyPhone } = req.body;
-  const user = storage.updateUser(parseInt(req.params.id), {
+  const user = await storage.updateUser(parseInt(req.params.id), {
     name, phone, address, departmentSlug, departmentId, emergencyContact, emergencyPhone,
   });
   if (!user) return res.status(404).json({ error: "User not found" });
@@ -114,23 +114,23 @@ router.put("/:id", requireRole("md", "hr"), (req, res) => {
 });
 
 // DELETE /api/users/:id — MD only
-router.delete("/:id", requireRole("md"), (req, res) => {
+router.delete("/:id", requireRole("md"), async (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.user!.id) return res.status(400).json({ error: "Cannot delete your own account" });
-  const deleted = storage.deleteUser(id);
+  const deleted = await storage.deleteUser(id);
   if (!deleted) return res.status(404).json({ error: "User not found" });
   res.json({ message: "User deleted" });
 });
 
 // POST /api/users/:id/avatar — upload avatar
-router.post("/:id/avatar", requireAuth, upload.single("avatar"), (req, res) => {
+router.post("/:id/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
   const id = parseInt(req.params.id);
   if (req.user!.role !== "md" && req.user!.role !== "hr" && req.user!.id !== id) {
     return res.status(403).json({ error: "Forbidden" });
   }
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
   const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-  const user = storage.updateUser(id, { avatarUrl });
+  const user = await storage.updateUser(id, { avatarUrl });
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json({ avatarUrl });
 });
@@ -148,7 +148,7 @@ router.get("/clocked-in/list", requireRole("md", "hr", "safety"), (req, res) => 
 });
 
 // POST /api/users/:id/comment — Security adds comment on staff
-router.post("/:id/comment", requireRole("security", "md", "hr"), (req, res) => {
+router.post("/:id/comment", requireRole("security", "md", "hr"), async (req, res) => {
   const { comment } = req.body;
   if (!comment) return res.status(400).json({ error: "Comment is required" });
 
@@ -157,7 +157,7 @@ router.post("/:id/comment", requireRole("security", "md", "hr"), (req, res) => {
   const staffUser = storage.getUserById(staffId);
   if (!staffUser) return res.status(404).json({ error: "Staff not found" });
 
-  const newComment = storage.createStaffComment({
+  const newComment = await storage.createStaffComment({
     staffId,
     authorId: req.user!.id,
     authorName: commenter?.name || "Unknown",
@@ -165,12 +165,14 @@ router.post("/:id/comment", requireRole("security", "md", "hr"), (req, res) => {
   });
 
   // Notify HR and MD
-  storage.getUsersByRole("hr").forEach(u =>
-    storage.createNotification({ userId: u.id, type: "staff_comment", title: "New Staff Comment", body: `Security added a comment on ${staffUser.name}`, link: `/hr/staff/${staffId}` })
-  );
-  storage.getUsersByRole("md").forEach(u =>
-    storage.createNotification({ userId: u.id, type: "staff_comment", title: "New Staff Comment", body: `Security added a comment on ${staffUser.name}`, link: `/md/staff/${staffId}` })
-  );
+  await Promise.all([
+    ...storage.getUsersByRole("hr").map(u =>
+      storage.createNotification({ userId: u.id, type: "staff_comment", title: "New Staff Comment", body: `Security added a comment on ${staffUser.name}`, link: `/hr/staff/${staffId}` })
+    ),
+    ...storage.getUsersByRole("md").map(u =>
+      storage.createNotification({ userId: u.id, type: "staff_comment", title: "New Staff Comment", body: `Security added a comment on ${staffUser.name}`, link: `/md/staff/${staffId}` })
+    ),
+  ]);
 
   res.status(201).json(newComment);
 });

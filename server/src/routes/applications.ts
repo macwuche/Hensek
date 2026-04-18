@@ -17,7 +17,7 @@ const upload = multer({ storage: docStorage, limits: { fileSize: 10 * 1024 * 102
 const HR_TYPES = ["leave", "schedule_change", "training"];
 
 // POST /api/applications — any authenticated staff
-router.post("/", requireAuth, upload.single("attachment"), (req, res) => {
+router.post("/", requireAuth, upload.single("attachment"), async (req, res) => {
   const { type, title, description, startDate, endDate } = req.body;
 
   if (!type || !title || !description) {
@@ -26,7 +26,7 @@ router.post("/", requireAuth, upload.single("attachment"), (req, res) => {
 
   const attachmentUrl = req.file ? `/uploads/documents/${req.file.filename}` : undefined;
 
-  const app = storage.createApplication({
+  const app = await storage.createApplication({
     userId: req.user!.id,
     type,
     title,
@@ -40,15 +40,15 @@ router.post("/", requireAuth, upload.single("attachment"), (req, res) => {
   const user = storage.getUserById(req.user!.id);
 
   // Notify HR
-  storage.getUsersByRole("hr").forEach(hr => {
+  await Promise.all(storage.getUsersByRole("hr").map(hr =>
     storage.createNotification({
       userId: hr.id,
       type: "new_application",
       title: "New Application",
       body: `${user?.name} submitted a ${type} application.`,
       link: "/hr/applications",
-    });
-  });
+    })
+  ));
   broadcastToRole("hr", { type: "new_application", application: app, userName: user?.name });
 
   res.status(201).json(app);
@@ -120,7 +120,7 @@ router.patch("/:id/review", requireRole("hr", "md"), async (req, res) => {
     else if (action === "reject") newStatus = "md_rejected";
   }
 
-  const updated = storage.updateApplication(app.id, {
+  const updated = await storage.updateApplication(app.id, {
     status: newStatus,
     hrComment: req.user!.role === "hr" ? comment : app.hrComment,
     mdComment: req.user!.role === "md" ? comment : app.mdComment,
@@ -137,7 +137,7 @@ router.patch("/:id/review", requireRole("hr", "md"), async (req, res) => {
   };
 
   if (statusMessages[newStatus]) {
-    storage.createNotification({
+    await storage.createNotification({
       userId: app.userId,
       type: "application_update",
       title: "Application Update",
@@ -149,15 +149,15 @@ router.patch("/:id/review", requireRole("hr", "md"), async (req, res) => {
 
   // If escalated, notify MD
   if (newStatus === "escalated_to_md") {
-    storage.getUsersByRole("md").forEach(md => {
+    await Promise.all(storage.getUsersByRole("md").map(md =>
       storage.createNotification({
         userId: md.id,
         type: "escalated_application",
         title: "Application Escalated",
         body: `HR escalated a ${app.type} application for your review.`,
         link: "/md/applications",
-      });
-    });
+      })
+    ));
     broadcastToRole("md", { type: "escalated_application" });
   }
 
