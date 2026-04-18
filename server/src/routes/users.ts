@@ -5,6 +5,11 @@ import path from "path";
 import { storage } from "../lib/storage.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { broadcastToUser } from "../lib/websocket.js";
+import { sendEmail, buildWelcomeEmail } from "../lib/email.js";
+
+function appBaseUrl(req: { protocol: string; get: (h: string) => string | undefined }): string {
+  return process.env.APP_URL || `${req.protocol}://${req.get("host") || "localhost"}`;
+}
 
 const router = Router();
 
@@ -54,6 +59,15 @@ router.patch("/:id/approve", requireRole("md", "hr"), async (req, res) => {
     body: "Your account has been approved. You can now log in.",
   });
   broadcastToUser(user.id, { type: "account_approved" });
+
+  // Send welcome email with login link
+  if (user.email) {
+    const dept = user.departmentId ? storage.getDeptById(user.departmentId) : undefined;
+    const base = appBaseUrl(req);
+    const loginUrl = `${base}/login`;
+    const { subject, html } = buildWelcomeEmail(user.name, dept?.name || "your", loginUrl);
+    void sendEmail({ to: user.email, subject, html });
+  }
 
   const { passwordHash, ...safe } = user;
   res.json(safe);

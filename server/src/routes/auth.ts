@@ -1,11 +1,14 @@
 import { Router } from "express";
 import passport from "passport";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { storage } from "../lib/storage.js";
 import { requireAuth } from "../middleware/auth.js";
 import { broadcast } from "../lib/websocket.js";
-import { sendEmail, buildRegistrationEmail } from "../lib/email.js";
+import { sendEmail, buildRegistrationEmail, buildPasswordResetEmail } from "../lib/email.js";
 import type { UserRole } from "../types/index.js";
+
+const PASSWORD_RESET_TTL_MINUTES = 60;
 
 function appBaseUrl(req: { protocol: string; get: (h: string) => string | undefined }): string {
   return process.env.APP_URL || `${req.protocol}://${req.get("host") || "localhost"}`;
@@ -155,6 +158,66 @@ router.put("/change-password", requireAuth, async (req, res) => {
   const passwordHash = await bcrypt.hash(newPassword, 10);
   storage.updateUser(user.id, { passwordHash });
   res.json({ message: "Password changed successfully" });
+});
+
+// POST /api/auth/forgot-password — request a password reset email
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = storage.getUserByEmail(email);
+    // Always respond with success to avoid leaking which emails exist
+    if (user && user.status !== "suspended") {
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+      await storage.createPasswordReset(user.id, token, expiresAt);
+
+      const base = appBaseUrl(req);
+      const resetUrl = `${base}/reset-password?token=${token}`;
+      const { subject, html } = buildPasswordResetEmail(user.name, resetUrl, PASSWORD_RESET_TTL_MINUTES);
+      void sendEmail({ to: user.email, subject, html });
+    }
+
+    res.json({ message: "If an account exists for that email, a reset link has been sent." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/auth/reset-password — consume a reset token and set a new password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body as { token?: string; password?: string };
+    if (!token || !password) {
+      return res.status(400).json({ error: "Token and new password are required" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const reset = await storage.getPasswordReset(token);
+    if (!reset) return res.status(400).json({ error: "Invalid or expired reset link" });
+    if (reset.usedAt) return res.status(400).json({ error: "This reset link has already been used" });
+    if (reset.expiresAt.getTime() < Date.now()) {
+      return res.status(400).json({ error: "This reset link has expired" });
+    }
+
+    const user = storage.getUserById(reset.userId);
+    if (!user) return res.status(400).json({ error: "Invalid reset link" });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await storage.updateUser(user.id, { passwordHash });
+    await storage.markPasswordResetUsed(reset.id);
+
+    res.json({ message: "Password updated successfully. You can now sign in." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;

@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, pool } from "../db/index.js";
 import * as s from "../db/schema.js";
 import type {
@@ -277,6 +277,7 @@ class Storage {
       "users", "departments", "attendance", "applications", "visitors",
       "announcements", "work_sites", "duties", "chat_messages",
       "staff_comments", "notifications", "security_reports", "safety_reports",
+      "password_resets",
     ];
     for (const t of tables) {
       await pool.query(
@@ -747,6 +748,25 @@ class Storage {
       todayAttendance: todayAttendance.length,
       recentAnnouncements: this.getAllAnnouncements().slice(0, 5),
     };
+  }
+
+  // ─── PASSWORD RESETS ──────────────────────────────────────────────────────
+  async createPasswordReset(userId: number, token: string, expiresAt: Date): Promise<void> {
+    // Invalidate any prior unused tokens for this user so only the latest link works
+    await db.update(s.passwordResets)
+      .set({ usedAt: new Date() })
+      .where(and(eq(s.passwordResets.userId, userId), isNull(s.passwordResets.usedAt)));
+    await db.insert(s.passwordResets).values({ userId, token, expiresAt });
+  }
+
+  async getPasswordReset(token: string): Promise<{ id: number; userId: number; expiresAt: Date; usedAt: Date | null } | undefined> {
+    const [row] = await db.select().from(s.passwordResets).where(eq(s.passwordResets.token, token)).limit(1);
+    if (!row) return undefined;
+    return { id: row.id, userId: row.userId, expiresAt: row.expiresAt, usedAt: row.usedAt };
+  }
+
+  async markPasswordResetUsed(id: number): Promise<void> {
+    await db.update(s.passwordResets).set({ usedAt: new Date() }).where(eq(s.passwordResets.id, id));
   }
 }
 

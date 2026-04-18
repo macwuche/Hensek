@@ -6,6 +6,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 // Auth pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 
 // MD pages
 import MDOverview from "@/pages/md";
@@ -99,6 +101,8 @@ export default function App() {
       {/* Public routes */}
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
 
       {/* MD routes */}
       <Route path="/md">

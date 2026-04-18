@@ -103,6 +103,30 @@ export function buildEscalationEmail(appType: string, staffName: string, appUrl:
   };
 }
 
+export function buildWelcomeEmail(staffName: string, deptName: string, loginUrl: string): { subject: string; html: string } {
+  return {
+    subject: `Welcome to Hensek, ${staffName}`,
+    html: shell(
+      `Welcome aboard, ${staffName}!`,
+      `<p>Your account in the <strong>${deptName}</strong> department has been approved by HR. You can now sign in and start using the Hensek platform.</p><p>If you forget your password, use the <em>Forgot password</em> link on the sign-in page to reset it.</p>`,
+      loginUrl,
+      "Sign in to Hensek",
+    ),
+  };
+}
+
+export function buildPasswordResetEmail(staffName: string, resetUrl: string, expiryMinutes: number): { subject: string; html: string } {
+  return {
+    subject: "Reset your Hensek password",
+    html: shell(
+      "Password reset request",
+      `<p>Hi ${staffName},</p><p>We received a request to reset the password for your Hensek account. Click the button below to choose a new password. This link will expire in <strong>${expiryMinutes} minutes</strong>.</p><p>If you didn't request a password reset, you can safely ignore this email — your password will stay the same.</p>`,
+      resetUrl,
+      "Reset password",
+    ),
+  };
+}
+
 export function buildReportEmail(reportType: string, period: string, companyName = "Hensek"): string {
   return `
     <div style="font-family: Inter, sans-serif; max-width: 600px; margin: 0 auto; background: #FEFCE8; padding: 32px; border-radius: 16px;">
