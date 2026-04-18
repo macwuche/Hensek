@@ -99,13 +99,24 @@ app.use("/api/dashboard", dashboardRouter);
 
 // ─── Dev: proxy non-API hits on this port to the Vite frontend ────────────────
 if (!IS_PROD) {
+  // Replit injects a workspace iframe wrapper at /__replco/workspace_iframe.html
+  // that frames the app at ?initialPath=...; redirect straight to the path.
+  app.get("/__replco/workspace_iframe.html", (req, res) => {
+    const initialPath = (req.query.initialPath as string) || "/";
+    res.redirect(initialPath);
+  });
   const viteProxy = createProxyMiddleware({
     target: "http://localhost:5001",
     changeOrigin: true,
     ws: true,
   });
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/ws") || req.path.startsWith("/uploads")) {
+    if (
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/ws") ||
+      req.path.startsWith("/uploads") ||
+      req.path.startsWith("/__replco")
+    ) {
       return next();
     }
     return (viteProxy as any)(req, res, next);
