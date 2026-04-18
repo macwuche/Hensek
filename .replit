@@ -42,3 +42,6 @@ outputType = "webview"
 task = "shell.exec"
 args = "PORT=3001 npm run dev"
 waitForPort = 5000
+
+[deployment]
+deploymentTarget = "cloudrun"
