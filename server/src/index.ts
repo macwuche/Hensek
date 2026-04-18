@@ -2,9 +2,12 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 import passport from "passport";
 import cors from "cors";
 import path from "path";
+import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 import { configurePassport } from "./lib/passport.js";
 import { setupWebSocket } from "./lib/websocket.js";
@@ -27,6 +30,10 @@ import dashboardRouter from "./routes/dashboard.js";
 const app = express();
 const server = createServer(app);
 const PORT = parseInt(process.env.PORT || "5000");
+const IS_PROD = process.env.NODE_ENV === "production";
+
+// Trust the deployment proxy (required for secure cookies + req.secure)
+app.set("trust proxy", 1);
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({
@@ -39,16 +46,28 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploads
 app.use("/uploads", express.static(path.resolve("uploads")));
 
-// Session (in-memory for now — will swap to connect-pg-simple on Replit)
+// Session store — Postgres in production, in-memory in dev
+let sessionStore: session.Store | undefined;
+if (IS_PROD && process.env.DATABASE_URL) {
+  const PgStore = connectPgSimple(session);
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  sessionStore = new PgStore({
+    pool,
+    tableName: "user_sessions",
+    createTableIfMissing: true,
+  });
+}
+
 app.use(session({
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || "hensek-dev-secret-change-in-production",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === "production",
+    secure: IS_PROD,
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    sameSite: IS_PROD ? "lax" : "lax",
   },
 }));
 
@@ -78,10 +97,15 @@ app.use("/api/reports", reportsRouter);
 app.use("/api/dashboard", dashboardRouter);
 
 // ─── Serve React in Production ────────────────────────────────────────────────
-if (process.env.NODE_ENV === "production") {
-  const clientDist = path.resolve("../client/dist");
+if (IS_PROD) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  // server source lives at server/src/index.ts; built client at client/dist
+  const clientDist = path.resolve(__dirname, "../../client/dist");
   app.use(express.static(clientDist));
-  app.get("*", (_, res) => res.sendFile(path.join(clientDist, "index.html")));
+  app.get(/^\/(?!api|ws|uploads).*/, (_req, res) =>
+    res.sendFile(path.join(clientDist, "index.html"))
+  );
 }
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────

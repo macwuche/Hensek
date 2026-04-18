@@ -44,4 +44,6 @@ args = "PORT=3001 npm run dev"
 waitForPort = 5000
 
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "cd server && NODE_ENV=production npx tsx src/index.ts"]
+build = ["bash", "-c", "cd client && npx vite build"]
