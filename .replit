@@ -45,5 +45,5 @@ waitForPort = 5000
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "cd server && NODE_ENV=production npx tsx src/index.ts"]
-build = ["bash", "-c", "cd client && npx vite build"]
+run = ["sh", "-c", "cd server && NODE_ENV=production npx tsx src/index.ts"]
+build = ["sh", "-c", "cd client && npx vite build"]
