@@ -13,10 +13,6 @@ externalPort = 3001
 exposeLocalhost = true
 
 [[ports]]
-localPort = 5000
-externalPort = 5000
-
-[[ports]]
 localPort = 5001
 externalPort = 80
 
@@ -37,12 +33,11 @@ name = "Start application"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "webview"
+outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "PORT=3001 npm run dev"
-waitForPort = 5000
 
 [deployment]
 deploymentTarget = "autoscale"

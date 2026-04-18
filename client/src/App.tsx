@@ -19,9 +19,19 @@ import MDSettings from "@/pages/md/Settings";
 import HROverview from "@/pages/hr";
 import HRStaff from "@/pages/hr/Staff";
 import HRApplications from "@/pages/hr/Applications";
-import HRApprovals from "@/pages/hr/Approvals";
 import HRAnnouncements from "@/pages/hr/Announcements";
 import HRDepartments from "@/pages/hr/Departments";
+import HRTasks from "@/pages/hr/Tasks";
+import HRCalendar from "@/pages/hr/Calendar";
+import HRPerformance from "@/pages/hr/Performance";
+import HRPayrolls from "@/pages/hr/Payrolls";
+import HRInvoices from "@/pages/hr/Invoices";
+import HRHiring from "@/pages/hr/Hiring";
+import HRSalaryInformation from "@/pages/hr/SalaryInformation";
+import HRCompensationBreakdown from "@/pages/hr/CompensationBreakdown";
+import HRProjectData from "@/pages/hr/ProjectData";
+import HRSettings from "@/pages/hr/Settings";
+import HRHelpCenter from "@/pages/hr/HelpCenter";
 
 // Safety pages
 import SafetyOverview from "@/pages/safety";
@@ -121,13 +131,47 @@ export default function App() {
         <ProtectedRoute roles={["hr"]}><HRApplications /></ProtectedRoute>
       </Route>
       <Route path="/hr/approvals">
-        <ProtectedRoute roles={["hr"]}><HRApprovals /></ProtectedRoute>
+        {/* Approvals folded into Staff → Pending tab */}
+        <Redirect to="/hr/staff" />
       </Route>
       <Route path="/hr/announcements">
         <ProtectedRoute roles={["hr"]}><HRAnnouncements /></ProtectedRoute>
       </Route>
       <Route path="/hr/departments">
         <ProtectedRoute roles={["hr"]}><HRDepartments /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/tasks">
+        <ProtectedRoute roles={["hr"]}><HRTasks /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/calendar">
+        <ProtectedRoute roles={["hr"]}><HRCalendar /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/performance">
+        <ProtectedRoute roles={["hr"]}><HRPerformance /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/payrolls">
+        <ProtectedRoute roles={["hr"]}><HRPayrolls /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/invoices">
+        <ProtectedRoute roles={["hr"]}><HRInvoices /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/hiring">
+        <ProtectedRoute roles={["hr"]}><HRHiring /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/salary">
+        <ProtectedRoute roles={["hr"]}><HRSalaryInformation /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/compensation">
+        <ProtectedRoute roles={["hr"]}><HRCompensationBreakdown /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/projects">
+        <ProtectedRoute roles={["hr"]}><HRProjectData /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/settings">
+        <ProtectedRoute roles={["hr"]}><HRSettings /></ProtectedRoute>
+      </Route>
+      <Route path="/hr/help">
+        <ProtectedRoute roles={["hr"]}><HRHelpCenter /></ProtectedRoute>
       </Route>
 
       {/* Safety routes */}

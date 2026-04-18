@@ -1,7 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/queryClient";
-import { formatDateTime, getStatusColor } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { ShieldCheck, Users, UserCheck, LogOut } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import StatCard from "@/components/ui/StatCard";
+import ChartCard from "@/components/ui/ChartCard";
+import DataTable, { Column } from "@/components/ui/DataTable";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Visitor {
   id: number;
@@ -18,16 +23,6 @@ interface Visitor {
 interface DashboardStats {
   totalStaff: number;
   clockedInNow: number;
-}
-
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color?: string }) {
-  return (
-    <div className="hensek-stat-card">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color || "bg-hensek-yellow/20"}`}>{icon}</div>
-      <p className="text-2xl font-bold text-hensek-dark">{value}</p>
-      <p className="text-xs font-medium text-gray-600 mt-0.5">{label}</p>
-    </div>
-  );
 }
 
 export default function SecurityOverview() {
@@ -48,73 +43,96 @@ export default function SecurityOverview() {
     queryFn: () => apiFetch("/api/dashboard/stats"),
   });
 
-  if (isLoading)
-    return (
-      <div className="py-12 flex justify-center">
-        <div className="w-7 h-7 border-2 border-hensek-yellow border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  const checkedOut = visitors.filter((v) => v.timeOut).length;
+
+  const activeCols: Column<Visitor>[] = [
+    {
+      key: "visitor",
+      header: "Visitor",
+      render: (v) => (
+        <div className="min-w-0">
+          <p className="font-medium text-sm text-hensek-dark truncate">{v.name}</p>
+          <p className="text-[10px] text-gray-400 truncate">
+            {v.officeDestination}
+            {v.hostName ? ` · Host: ${v.hostName}` : ""}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: () => <span className="hensek-badge hensek-badge-green">On-Site</span>,
+      className: "hidden sm:table-cell",
+    },
+    {
+      key: "time",
+      header: "Time In",
+      render: (v) => <span className="text-xs text-gray-500">{formatDateTime(v.timeIn)}</span>,
+      className: "text-right",
+    },
+  ];
+
+  const logCols: Column<Visitor>[] = [
+    {
+      key: "visitor",
+      header: "Visitor",
+      render: (v) => (
+        <div className="min-w-0">
+          <p className="font-medium text-sm text-hensek-dark truncate">{v.name}</p>
+          <p className="text-[10px] text-gray-400 truncate">{v.purpose || "—"} · {v.officeDestination}</p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (v) => (
+        <span className={`hensek-badge ${v.timeOut ? "hensek-badge-gray" : "hensek-badge-green"}`}>
+          {v.timeOut ? "Out" : "On-Site"}
+        </span>
+      ),
+      className: "hidden sm:table-cell",
+    },
+    {
+      key: "time",
+      header: "Time In",
+      render: (v) => <span className="text-xs text-gray-500">{formatDateTime(v.timeIn)}</span>,
+      className: "text-right",
+    },
+  ];
 
   return (
-    <div className="py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-hensek-dark">Security Dashboard</h1>
-        <p className="text-sm text-gray-500">Real-time security and visitor monitoring</p>
+    <div className="hensek-page-shell">
+      <PageHeader title="Security Dashboard" subtitle="Real-time security and visitor monitoring" />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <StatCard label="Visitors Today" value={visitors.length} icon={<Users size={18} />} />
+        <StatCard label="On-Site Now" value={activeVisitors.length} icon={<UserCheck size={18} />} />
+        <StatCard label="Checked Out" value={checkedOut} icon={<LogOut size={18} />} />
+        <StatCard label="Staff Clocked In" value={stats?.clockedInNow ?? 0} icon={<ShieldCheck size={18} />} />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard icon={<Users size={18} className="text-hensek-dark" />} label="Visitors Today" value={visitors.length} />
-        <StatCard icon={<UserCheck size={18} className="text-green-600" />} label="On-Site Now" value={activeVisitors.length} color="bg-green-50" />
-        <StatCard icon={<LogOut size={18} className="text-blue-600" />} label="Checked Out" value={visitors.filter(v => v.timeOut).length} color="bg-blue-50" />
-        <StatCard icon={<ShieldCheck size={18} className="text-orange-600" />} label="Staff Clocked In" value={stats?.clockedInNow ?? 0} color="bg-orange-50" />
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Currently On-Site" subtitle={`${activeVisitors.length} visitors`}>
+          <DataTable
+            columns={activeCols}
+            rows={activeVisitors}
+            rowKey={(v) => String(v.id)}
+            loading={isLoading}
+            empty={<EmptyState icon={<UserCheck size={20} />} title="No visitors on-site" description="Active visitors will appear here as they sign in." />}
+          />
+        </ChartCard>
 
-      {/* Active visitors */}
-      <div className="hensek-card p-4">
-        <h2 className="text-sm font-semibold text-hensek-dark mb-3">Currently On-Site</h2>
-        {activeVisitors.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No visitors currently on-site</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {activeVisitors.map((v) => (
-              <li key={v.id} className="py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-hensek-dark">{v.name}</p>
-                  <p className="text-xs text-gray-400">{v.officeDestination}{v.hostName ? ` · Host: ${v.hostName}` : ""}</p>
-                </div>
-                <div className="text-right">
-                  <span className="hensek-badge hensek-badge-green text-[10px]">On-Site</span>
-                  <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(v.timeIn)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Today's log */}
-      <div className="hensek-card p-4">
-        <h2 className="text-sm font-semibold text-hensek-dark mb-3">Today's Visitor Log</h2>
-        {visitors.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No visitors logged today</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {visitors.slice(0, 10).map((v) => (
-              <li key={v.id} className="py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-hensek-dark">{v.name}</p>
-                  <p className="text-xs text-gray-400">{v.purpose || "—"} · {v.officeDestination}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`hensek-badge text-[10px] ${v.timeOut ? "hensek-badge-gray" : "hensek-badge-green"}`}>
-                    {v.timeOut ? "Out" : "On-Site"}
-                  </span>
-                  <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(v.timeIn)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ChartCard title="Today's Visitor Log" subtitle={`${visitors.length} entries`}>
+          <DataTable
+            columns={logCols}
+            rows={visitors.slice(0, 10)}
+            rowKey={(v) => String(v.id)}
+            loading={isLoading}
+            empty={<EmptyState icon={<Users size={20} />} title="No visitors logged today" />}
+          />
+        </ChartCard>
       </div>
     </div>
   );

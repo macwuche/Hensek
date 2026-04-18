@@ -67,6 +67,28 @@
     @apply px-3 py-1.5 rounded-full text-sm font-medium bg-hensek-yellow text-hensek-dark transition-all cursor-pointer;
   }
 
+  .hensek-sidebar {
+    background: #1A1A2E;
+    color: #fff;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .hensek-sidebar-section {
+    @apply space-y-0.5;
+  }
+
+  .hensek-sidebar-link {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-white/65 hover:text-white hover:bg-white/5 transition-colors cursor-pointer;
+  }
+
+  .hensek-sidebar-link-active {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium bg-hensek-yellow text-hensek-dark transition-colors cursor-pointer;
+  }
+
+  .hensek-page-shell {
+    @apply pt-2;
+  }
+
   .hensek-badge-yellow {
     @apply bg-hensek-yellow/20 text-yellow-800 px-2.5 py-0.5 rounded-full text-xs font-medium;
   }

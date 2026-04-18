@@ -3,6 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiPut, apiPost } from "@/lib/queryClient";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import PageHeader from "@/components/ui/PageHeader";
+import ChartCard from "@/components/ui/ChartCard";
 
 export default function MDSettings() {
   const { user } = useAuth();
@@ -42,52 +44,49 @@ export default function MDSettings() {
   };
 
   return (
-    <div className="py-6 space-y-6 max-w-lg">
-      <div>
-        <h1 className="text-2xl font-bold text-hensek-dark">Settings</h1>
-        <p className="text-sm text-gray-500">Manage your account</p>
-      </div>
+    <div className="hensek-page-shell max-w-2xl">
+      <PageHeader title="Settings" subtitle="Manage your account" />
 
-      <div className="hensek-card p-5">
-        <h2 className="text-sm font-semibold text-hensek-dark mb-4">Profile</h2>
-        <form onSubmit={saveProfile} className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
-            <input value={profile.name} onChange={(e) => setProfile(p => ({ ...p, name: e.target.value }))} className="hensek-input w-full" required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
-            <input value={profile.phone} onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))} className="hensek-input w-full" placeholder="+234 800 000 0000" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Address</label>
-            <input value={profile.address} onChange={(e) => setProfile(p => ({ ...p, address: e.target.value }))} className="hensek-input w-full" placeholder="Your address" />
-          </div>
-          <button type="submit" disabled={savingProfile} className="hensek-btn-primary">
-            {savingProfile ? "Saving…" : "Save Profile"}
-          </button>
-        </form>
-      </div>
+      <div className="space-y-5">
+        <ChartCard title="Profile" subtitle="Personal contact information">
+          <form onSubmit={saveProfile} className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
+              <input value={profile.name} onChange={(e) => setProfile(p => ({ ...p, name: e.target.value }))} className="hensek-input w-full" required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+              <input value={profile.phone} onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))} className="hensek-input w-full" placeholder="+234 800 000 0000" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Address</label>
+              <input value={profile.address} onChange={(e) => setProfile(p => ({ ...p, address: e.target.value }))} className="hensek-input w-full" placeholder="Your address" />
+            </div>
+            <button type="submit" disabled={savingProfile} className="hensek-btn-primary">
+              {savingProfile ? "Saving…" : "Save Profile"}
+            </button>
+          </form>
+        </ChartCard>
 
-      <div className="hensek-card p-5">
-        <h2 className="text-sm font-semibold text-hensek-dark mb-4">Change Password</h2>
-        <form onSubmit={changePassword} className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Current Password</label>
-            <input type="password" value={passwords.current} onChange={(e) => setPasswords(p => ({ ...p, current: e.target.value }))} className="hensek-input w-full" required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">New Password</label>
-            <input type="password" value={passwords.next} onChange={(e) => setPasswords(p => ({ ...p, next: e.target.value }))} className="hensek-input w-full" required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Confirm New Password</label>
-            <input type="password" value={passwords.confirm} onChange={(e) => setPasswords(p => ({ ...p, confirm: e.target.value }))} className="hensek-input w-full" required />
-          </div>
-          <button type="submit" disabled={savingPw} className="hensek-btn-primary">
-            {savingPw ? "Changing…" : "Change Password"}
-          </button>
-        </form>
+        <ChartCard title="Change Password" subtitle="Use a strong, unique password">
+          <form onSubmit={changePassword} className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Current Password</label>
+              <input type="password" value={passwords.current} onChange={(e) => setPasswords(p => ({ ...p, current: e.target.value }))} className="hensek-input w-full" required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">New Password</label>
+              <input type="password" value={passwords.next} onChange={(e) => setPasswords(p => ({ ...p, next: e.target.value }))} className="hensek-input w-full" required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Confirm New Password</label>
+              <input type="password" value={passwords.confirm} onChange={(e) => setPasswords(p => ({ ...p, confirm: e.target.value }))} className="hensek-input w-full" required />
+            </div>
+            <button type="submit" disabled={savingPw} className="hensek-btn-primary">
+              {savingPw ? "Changing…" : "Change Password"}
+            </button>
+          </form>
+        </ChartCard>
       </div>
     </div>
   );

@@ -1,9 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { formatDate, formatTime, formatMinutes, getStatusColor } from "@/lib/utils";
-import { Clock, HardHat, FileText, CheckCircle2 } from "lucide-react";
+import { formatDate, formatTime, formatMinutes, getStatusColor, capitalize } from "@/lib/utils";
+import { Clock, HardHat, FileText, CheckCircle2, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import PageHeader from "@/components/ui/PageHeader";
+import StatCard from "@/components/ui/StatCard";
+import ChartCard from "@/components/ui/ChartCard";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface AttendanceRecord {
   id: number;
@@ -25,16 +29,6 @@ interface Duty {
   site?: { id: number; name: string } | null;
 }
 
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color?: string }) {
-  return (
-    <div className="hensek-stat-card">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color || "bg-hensek-yellow/20"}`}>{icon}</div>
-      <p className="text-2xl font-bold text-hensek-dark">{value}</p>
-      <p className="text-xs font-medium text-gray-600 mt-0.5">{label}</p>
-    </div>
-  );
-}
-
 export default function StaffOverview() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -52,90 +46,150 @@ export default function StaffOverview() {
 
   const clockInMutation = useMutation({
     mutationFn: () => apiPost("/api/attendance/clock-in", {}),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance", "today"] }); qc.invalidateQueries({ queryKey: ["auth", "me"] }); toast.success("Clocked in!"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attendance", "today"] });
+      qc.invalidateQueries({ queryKey: ["auth", "me"] });
+      toast.success("Clocked in!");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const clockOutMutation = useMutation({
     mutationFn: () => apiPost("/api/attendance/clock-out", {}),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance", "today"] }); qc.invalidateQueries({ queryKey: ["auth", "me"] }); toast.success("Clocked out"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attendance", "today"] });
+      qc.invalidateQueries({ queryKey: ["auth", "me"] });
+      toast.success("Clocked out");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const today = new Date().toISOString().split("T")[0];
   const todayDuties = duties.filter((d) => d.date === today);
+  const completed = todayDuties.filter((d) => d.status === "completed").length;
 
   return (
-    <div className="py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-hensek-dark">Welcome, {user?.name?.split(" ")[0]}</h1>
-        <p className="text-sm text-gray-500">{formatDate(new Date())} · {user?.departmentSlug || "Staff"}</p>
+    <div className="hensek-page-shell">
+      <PageHeader
+        title={`Welcome, ${user?.name?.split(" ")[0] ?? ""}`}
+        subtitle={`${formatDate(new Date())} · ${capitalize(user?.departmentSlug || "Staff")}`}
+        actions={
+          !user?.isClockedIn ? (
+            <button
+              className="hensek-btn-primary flex items-center gap-1.5"
+              onClick={() => clockInMutation.mutate()}
+              disabled={clockInMutation.isPending || !!todayRecord?.clockOut}
+            >
+              <Clock size={15} />
+              {clockInMutation.isPending ? "…" : "Clock In"}
+            </button>
+          ) : (
+            <button
+              className="hensek-btn-danger flex items-center gap-1.5"
+              onClick={() => clockOutMutation.mutate()}
+              disabled={clockOutMutation.isPending}
+            >
+              <Clock size={15} />
+              {clockOutMutation.isPending ? "…" : "Clock Out"}
+            </button>
+          )
+        }
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <StatCard
+          label="Today's Duties"
+          value={todayDuties.length}
+          hint={`${completed} completed`}
+          icon={<HardHat size={18} />}
+        />
+        <StatCard
+          label="Completed"
+          value={completed}
+          hint={`of ${todayDuties.length} today`}
+          icon={<CheckCircle2 size={18} />}
+        />
+        <StatCard
+          label="Total Duties"
+          value={duties.length}
+          hint="all time assignments"
+          icon={<FileText size={18} />}
+        />
+        <StatCard
+          label="Status"
+          value={user?.isClockedIn ? "Clocked In" : "Clocked Out"}
+          hint={todayRecord?.totalMinutes ? formatMinutes(todayRecord.totalMinutes) : "Not clocked in today"}
+          icon={<Clock size={18} />}
+        />
       </div>
 
-      {/* Clock in/out card */}
-      <div className="hensek-card p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-hensek-dark">Today's Attendance</p>
-            {todayRecord ? (
-              <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                <p>Clock In: <span className="font-medium text-hensek-dark">{formatTime(todayRecord.clockIn)}</span></p>
-                {todayRecord.clockOut && <p>Clock Out: <span className="font-medium text-hensek-dark">{formatTime(todayRecord.clockOut)}</span></p>}
-                {todayRecord.totalMinutes && <p>Duration: <span className="font-medium text-hensek-dark">{formatMinutes(todayRecord.totalMinutes)}</span></p>}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400 mt-1">Not clocked in today</p>
-            )}
-          </div>
-          <div>
-            {!user?.isClockedIn ? (
-              <button
-                className="hensek-btn-primary flex items-center gap-1.5"
-                onClick={() => clockInMutation.mutate()}
-                disabled={clockInMutation.isPending || !!todayRecord?.clockOut}
-              >
-                <Clock size={15} />
-                {clockInMutation.isPending ? "…" : "Clock In"}
-              </button>
-            ) : (
-              <button
-                className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors"
-                onClick={() => clockOutMutation.mutate()}
-                disabled={clockOutMutation.isPending}
-              >
-                <Clock size={15} />
-                {clockOutMutation.isPending ? "…" : "Clock Out"}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard icon={<HardHat size={18} className="text-orange-600" />} label="Today's Duties" value={todayDuties.length} color="bg-orange-50" />
-        <StatCard icon={<CheckCircle2 size={18} className="text-green-600" />} label="Completed" value={todayDuties.filter(d => d.status === "completed").length} color="bg-green-50" />
-        <StatCard icon={<FileText size={18} className="text-blue-600" />} label="Total Duties" value={duties.length} color="bg-blue-50" />
-        <StatCard icon={<Clock size={18} className="text-hensek-dark" />} label="Status" value={user?.isClockedIn ? "In" : "Out"} color={user?.isClockedIn ? "bg-green-50" : "bg-gray-50"} />
-      </div>
-
-      {/* Today's duties */}
-      {todayDuties.length > 0 && (
-        <div className="hensek-card p-4">
-          <h2 className="text-sm font-semibold text-hensek-dark mb-3">Today's Duties</h2>
-          <ul className="divide-y divide-border">
-            {todayDuties.map((d) => (
-              <li key={d.id} className="py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-hensek-dark">{d.taskDescription}</p>
-                  <p className="text-xs text-gray-400">{d.site?.name || "—"} · {d.shiftStart}–{d.shiftEnd}</p>
-                </div>
-                <span className={`hensek-badge text-[10px] ${getStatusColor(d.status)}`}>{d.status.replace(/_/g, " ")}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <ChartCard title="Today's Attendance" subtitle="Your clock-in record for today" className="lg:col-span-1">
+          {todayRecord ? (
+            <ul className="space-y-2.5 text-sm">
+              <li className="flex justify-between">
+                <span className="text-gray-500">Clock In</span>
+                <span className="font-medium text-hensek-dark">{formatTime(todayRecord.clockIn)}</span>
               </li>
-            ))}
-          </ul>
-        </div>
-      )}
+              {todayRecord.clockOut && (
+                <li className="flex justify-between">
+                  <span className="text-gray-500">Clock Out</span>
+                  <span className="font-medium text-hensek-dark">{formatTime(todayRecord.clockOut)}</span>
+                </li>
+              )}
+              {todayRecord.totalMinutes != null && (
+                <li className="flex justify-between">
+                  <span className="text-gray-500">Duration</span>
+                  <span className="font-medium text-hensek-dark">{formatMinutes(todayRecord.totalMinutes)}</span>
+                </li>
+              )}
+              {todayRecord.isOvertime && (
+                <li className="flex justify-between">
+                  <span className="text-gray-500">Overtime</span>
+                  <span className="hensek-badge hensek-badge-yellow">Yes</span>
+                </li>
+              )}
+            </ul>
+          ) : (
+            <EmptyState
+              icon={<Clock size={18} />}
+              title="Not clocked in"
+              description="Use the Clock In button above to start your shift."
+            />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Today's Duties" subtitle="Scheduled tasks for today" className="lg:col-span-2">
+          {todayDuties.length === 0 ? (
+            <EmptyState
+              icon={<HardHat size={18} />}
+              title="No duties scheduled"
+              description="You have no assigned duties for today."
+            />
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {todayDuties.map((d) => (
+                <li key={d.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-hensek-dark truncate">{d.taskDescription}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                      {d.site?.name && (
+                        <span className="flex items-center gap-1">
+                          <MapPin size={11} /> {d.site.name}
+                        </span>
+                      )}
+                      <span>{d.shiftStart}–{d.shiftEnd}</span>
+                    </p>
+                  </div>
+                  <span className={`hensek-badge ${getStatusColor(d.status)}`}>
+                    {capitalize(d.status.replace(/_/g, " "))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ChartCard>
+      </div>
     </div>
   );
 }

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost } from "@/lib/queryClient";
-import { formatDate, getStatusColor } from "@/lib/utils";
-import { APPLICATION_TYPES } from "@/lib/utils";
-import { Plus, X } from "lucide-react";
+import { formatDate, getStatusColor, capitalize, cn, APPLICATION_TYPES } from "@/lib/utils";
+import { Plus, FileText } from "lucide-react";
 import { toast } from "sonner";
+import PageHeader from "@/components/ui/PageHeader";
+import DataTable, { Column } from "@/components/ui/DataTable";
 
 interface Application {
   id: number;
@@ -17,9 +18,33 @@ interface Application {
   mdComment?: string;
 }
 
+const TABS = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "hr_review", label: "HR Review" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+];
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-fade-in">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="font-semibold text-hensek-dark">{title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function StaffApplications() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [selected, setSelected] = useState<Application | null>(null);
+  const [filter, setFilter] = useState("all");
   const [form, setForm] = useState({ type: "leave", subject: "", description: "" });
 
   const { data: applications = [], isLoading } = useQuery<Application[]>({
@@ -38,103 +63,172 @@ export default function StaffApplications() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  return (
-    <div className="py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-hensek-dark">My Applications</h1>
-          <p className="text-sm text-gray-500">Submit and track your applications</p>
+  const counts: Record<string, number> = { all: applications.length };
+  applications.forEach((a) => { counts[a.status] = (counts[a.status] || 0) + 1; });
+
+  const filtered = useMemo(
+    () => (filter === "all" ? applications : applications.filter((a) => a.status === filter)),
+    [applications, filter],
+  );
+
+  const columns: Column<Application>[] = [
+    {
+      key: "subject",
+      header: "Application",
+      render: (a) => (
+        <div className="min-w-0">
+          <p className="font-medium text-sm text-hensek-dark truncate">{a.subject}</p>
+          <p className="text-[11px] text-gray-400">
+            {APPLICATION_TYPES.find((t) => t.value === a.type)?.label || a.type} · {formatDate(a.createdAt)}
+          </p>
         </div>
-        <button className="hensek-btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
-          <Plus size={16} /> New Application
-        </button>
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      render: (a) => <span className="text-xs text-gray-600 capitalize">{a.type.replace(/_/g, " ")}</span>,
+      className: "hidden md:table-cell",
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (a) => (
+        <span className={`hensek-badge ${getStatusColor(a.status)}`}>
+          {capitalize(a.status.replace(/_/g, " "))}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="hensek-page-shell">
+      <PageHeader
+        title="My Applications"
+        subtitle="Submit and track your applications"
+        actions={
+          <button className="hensek-btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
+            <Plus size={15} /> New Application
+          </button>
+        }
+      />
+
+      <div className="hensek-card">
+        <div className="flex flex-wrap gap-1 mb-4">
+          {TABS.map((t) => {
+            const c = counts[t.key] || 0;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setFilter(t.key)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
+                  filter === t.key
+                    ? "bg-hensek-dark text-white"
+                    : "bg-hensek-warm text-gray-600 hover:bg-hensek-warm/70",
+                )}
+              >
+                {t.label}
+                <span
+                  className={cn(
+                    "text-[10px] rounded-full px-1.5 py-0.5",
+                    filter === t.key ? "bg-hensek-yellow text-hensek-dark" : "bg-white/60 text-gray-500",
+                  )}
+                >
+                  {c}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          rowKey={(a) => String(a.id)}
+          loading={isLoading}
+          onRowClick={(a) => setSelected(a)}
+          empty={
+            <div className="flex flex-col items-center gap-2">
+              <FileText size={20} className="text-gray-300" />
+              <span>No applications yet</span>
+            </div>
+          }
+        />
       </div>
 
-      {/* Submit form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="hensek-card w-full max-w-md p-6 animate-fade-in space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-hensek-dark">New Application</h2>
-              <button onClick={() => setShowForm(false)}><X size={18} className="text-gray-400 hover:text-gray-600" /></button>
+        <Modal title="New Application" onClose={() => setShowForm(false)}>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Application Type</label>
+              <select
+                className="hensek-input"
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+              >
+                {APPLICATION_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Application Type</label>
-                <select className="hensek-input text-sm" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                  {APPLICATION_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Subject *</label>
-                <input className="hensek-input text-sm" placeholder="Brief subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Description *</label>
-                <textarea
-                  className="hensek-input text-sm resize-none"
-                  rows={4}
-                  placeholder="Provide details for your application…"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                />
-              </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Subject *</label>
+              <input
+                className="hensek-input"
+                placeholder="Brief subject"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+              />
             </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <button className="hensek-btn-secondary text-sm" onClick={() => setShowForm(false)}>Cancel</button>
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Description *</label>
+              <textarea
+                className="hensek-input h-28 resize-none"
+                placeholder="Provide details for your application…"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowForm(false)} className="hensek-btn-outline flex-1 justify-center">Cancel</button>
               <button
-                className="hensek-btn-primary text-sm"
                 onClick={() => submitMutation.mutate(form)}
                 disabled={submitMutation.isPending || !form.subject || !form.description}
+                className="hensek-btn-primary flex-1 justify-center"
               >
                 {submitMutation.isPending ? "Submitting…" : "Submit"}
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {isLoading ? (
-        <div className="py-10 flex justify-center">
-          <div className="w-6 h-6 border-2 border-hensek-yellow border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : applications.length === 0 ? (
-        <div className="hensek-card p-8 text-center">
-          <p className="text-sm text-gray-400">No applications yet</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {applications.map((a) => (
-            <div key={a.id} className="hensek-card p-4 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-hensek-dark">{a.subject}</p>
-                  <p className="text-xs text-gray-400">{APPLICATION_TYPES.find(t => t.value === a.type)?.label || a.type} · {formatDate(a.createdAt)}</p>
-                </div>
-                <span className={`hensek-badge text-[10px] shrink-0 ${getStatusColor(a.status)}`}>
-                  {a.status.replace(/_/g, " ")}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 line-clamp-2">{a.description}</p>
-              {(a.hrComment || a.mdComment) && (
-                <div className="space-y-1">
-                  {a.hrComment && (
-                    <div className="bg-blue-50 rounded-lg px-3 py-1.5">
-                      <p className="text-xs font-medium text-blue-700">HR: <span className="font-normal">{a.hrComment}</span></p>
-                    </div>
-                  )}
-                  {a.mdComment && (
-                    <div className="bg-yellow-50 rounded-lg px-3 py-1.5">
-                      <p className="text-xs font-medium text-yellow-700">MD: <span className="font-normal">{a.mdComment}</span></p>
-                    </div>
-                  )}
-                </div>
-              )}
+      {selected && (
+        <Modal title={selected.subject} onClose={() => setSelected(null)}>
+          <div className="space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              <span className={`hensek-badge ${getStatusColor(selected.status)}`}>
+                {capitalize(selected.status.replace(/_/g, " "))}
+              </span>
+              <span className="hensek-badge hensek-badge-gray">{selected.type.replace(/_/g, " ")}</span>
+              <span className="text-xs text-gray-400 self-center">{formatDate(selected.createdAt)}</span>
             </div>
-          ))}
-        </div>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{selected.description}</p>
+            {selected.hrComment && (
+              <div className="bg-blue-50 rounded-xl px-3 py-2">
+                <p className="text-xs font-semibold text-blue-700 mb-0.5">HR Comment</p>
+                <p className="text-xs text-blue-700/90">{selected.hrComment}</p>
+              </div>
+            )}
+            {selected.mdComment && (
+              <div className="bg-yellow-50 rounded-xl px-3 py-2">
+                <p className="text-xs font-semibold text-yellow-700 mb-0.5">MD Comment</p>
+                <p className="text-xs text-yellow-700/90">{selected.mdComment}</p>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,7 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/queryClient";
-import { formatDate, formatMinutes, getStatusColor } from "@/lib/utils";
-import { HardHat, MapPin, Users, Clock, CheckCircle2 } from "lucide-react";
+import { getStatusColor } from "@/lib/utils";
+import { HardHat, MapPin, Users, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import StatCard from "@/components/ui/StatCard";
+import ChartCard from "@/components/ui/ChartCard";
+import MiniDonut from "@/components/ui/MiniDonut";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface DashboardStats {
   totalStaff: number;
@@ -10,16 +15,6 @@ interface DashboardStats {
   todayDuties: number;
   completedDuties: number;
   missedDuties: number;
-}
-
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color?: string }) {
-  return (
-    <div className="hensek-stat-card">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color || "bg-hensek-yellow/20"}`}>{icon}</div>
-      <p className="text-2xl font-bold text-hensek-dark">{value}</p>
-      <p className="text-xs font-medium text-gray-600 mt-0.5">{label}</p>
-    </div>
-  );
 }
 
 export default function SafetyOverview() {
@@ -33,47 +28,81 @@ export default function SafetyOverview() {
     queryFn: () => apiFetch("/api/duties?date=" + new Date().toISOString().split("T")[0]),
   });
 
-  if (isLoading) return (
-    <div className="py-12 flex justify-center">
-      <div className="w-7 h-7 border-2 border-hensek-yellow border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <div className="py-12 flex justify-center">
+        <div className="w-7 h-7 border-2 border-hensek-yellow border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const completed = duties.filter((d: any) => d.status === "completed").length;
+  const inProgress = duties.filter((d: any) => d.status === "in_progress").length;
+  const missed = duties.filter((d: any) => d.status === "missed").length;
+  const completionRate = duties.length > 0 ? Math.round((completed / duties.length) * 100) : 0;
 
   return (
-    <div className="py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-hensek-dark">Safety Dashboard</h1>
-        <p className="text-sm text-gray-500">{formatDate(new Date())} — Safety Department</p>
+    <div className="hensek-page-shell">
+      <PageHeader title="Safety Dashboard" subtitle="Monitor staff, sites and duty execution" />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+        <StatCard label="Clocked In Now" value={stats?.clockedInNow ?? 0} hint={`${stats?.totalStaff ?? 0} total staff`} icon={<Users size={18} />}>
+          <div className="flex items-center gap-3 mt-1">
+            <MiniDonut value={stats?.clockedInNow ?? 0} max={Math.max(stats?.totalStaff ?? 1, 1)} color="#22C55E" />
+            <div className="text-xs space-y-1 text-gray-600">
+              <div>Active Sites: <span className="font-semibold text-hensek-dark">{stats?.activeSites ?? 0}</span></div>
+              <div>Total: <span className="font-semibold text-hensek-dark">{stats?.totalStaff ?? 0}</span></div>
+            </div>
+          </div>
+        </StatCard>
+
+        <StatCard label="Today's Duties" value={duties.length} hint={`${completed} completed`} icon={<HardHat size={18} />}>
+          <div className="flex items-center gap-3 mt-1">
+            <MiniDonut value={completionRate} max={100} color="#EAB308" />
+            <div className="text-xs space-y-1 text-gray-600">
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500" /><span>Completed · {completed}</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-400" /><span>In progress · {inProgress}</span></div>
+            </div>
+          </div>
+        </StatCard>
+
+        <StatCard label="Active Sites" value={stats?.activeSites ?? 0} hint={`${missed} missed duties`} icon={<MapPin size={18} />}>
+          <div className="flex items-center gap-3 mt-1">
+            <MiniDonut value={duties.length - missed} max={Math.max(duties.length, 1)} color="#3B82F6" />
+            <div className="text-xs space-y-1 text-gray-600">
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /><span>Missed · {missed}</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" /><span>On track · {duties.length - missed}</span></div>
+            </div>
+          </div>
+        </StatCard>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <StatCard icon={<Users size={18} className="text-hensek-dark" />} label="Clocked In Now" value={stats?.clockedInNow ?? 0} />
-        <StatCard icon={<MapPin size={18} className="text-blue-600" />} label="Active Sites" value={stats?.activeSites ?? 0} color="bg-blue-50" />
-        <StatCard icon={<HardHat size={18} className="text-orange-600" />} label="Today's Duties" value={duties.length} color="bg-orange-50" />
-        <StatCard icon={<CheckCircle2 size={18} className="text-green-600" />} label="Completed" value={duties.filter((d: any) => d.status === "completed").length} color="bg-green-50" />
-        <StatCard icon={<Clock size={18} className="text-yellow-600" />} label="In Progress" value={duties.filter((d: any) => d.status === "in_progress").length} color="bg-yellow-50" />
-        <StatCard icon={<Clock size={18} className="text-red-500" />} label="Missed" value={duties.filter((d: any) => d.status === "missed").length} color="bg-red-50" />
-      </div>
-
-      {/* Today's duties summary */}
-      <div className="hensek-card p-4">
-        <h2 className="text-sm font-semibold text-hensek-dark mb-3">Today's Duty Assignments</h2>
+      <ChartCard title="Today's Duty Assignments" subtitle="Latest duties scheduled for today">
         {duties.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No duties assigned for today</p>
+          <EmptyState
+            icon={<AlertTriangle size={20} />}
+            title="No duties assigned"
+            description="No duties have been assigned for today yet."
+          />
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-border/60">
             {duties.slice(0, 8).map((d: any) => (
-              <li key={d.id} className="py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-hensek-dark">{d.staffName || `Staff #${d.userId}`}</p>
-                  <p className="text-xs text-gray-400">{d.siteName || `Site #${d.siteId}`} · {d.shiftStart}–{d.shiftEnd}</p>
+              <li key={d.id} className="py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-hensek-yellow/15 flex items-center justify-center text-hensek-dark flex-shrink-0">
+                    {d.status === "completed" ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-hensek-dark truncate">{d.user?.name || d.staffName || `Staff #${d.userId}`}</p>
+                    <p className="text-xs text-gray-500 truncate">{d.site?.name || d.siteName || `Site #${d.siteId}`} · {d.shiftStart}–{d.shiftEnd}</p>
+                  </div>
                 </div>
-                <span className={`hensek-badge text-[10px] ${getStatusColor(d.status)}`}>{d.status.replace(/_/g, " ")}</span>
+                <span className={`hensek-badge ${getStatusColor(d.status)}`}>{d.status.replace(/_/g, " ")}</span>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </ChartCard>
     </div>
   );
 }

@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/queryClient";
-import { getInitials, getStatusColor } from "@/lib/utils";
+import { getInitials, getStatusColor, capitalize } from "@/lib/utils";
+import { Search, Users } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import DataTable, { Column } from "@/components/ui/DataTable";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface StaffMember {
   id: number;
@@ -25,82 +29,77 @@ export default function SecurityStaff() {
     refetchInterval: 60000,
   });
 
-  const filtered = staff.filter(
-    (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = useMemo(() => {
+    if (!search) return staff;
+    const q = search.toLowerCase();
+    return staff.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  }, [staff, search]);
+
+  const columns: Column<StaffMember>[] = [
+    {
+      key: "staff",
+      header: "Staff",
+      render: (u) => (
+        <div className="flex items-center gap-2.5">
+          <div className="relative w-8 h-8 rounded-lg bg-hensek-yellow/30 flex items-center justify-center text-xs font-bold text-hensek-dark flex-shrink-0">
+            {u.avatarUrl ? <img src={u.avatarUrl} className="w-full h-full rounded-lg object-cover" alt={u.name} /> : getInitials(u.name)}
+            {u.isOnline && <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white" />}
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{u.name}</p>
+            <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "dept",
+      header: "Department",
+      render: (u) => <span className="text-xs capitalize">{u.departmentSlug || u.role}</span>,
+      className: "hidden sm:table-cell",
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (u) => <span className={`hensek-badge ${getStatusColor(u.status)}`}>{capitalize(u.status)}</span>,
+    },
+    {
+      key: "clock",
+      header: "Clocked In",
+      render: (u) =>
+        u.isClockedIn ? (
+          <span className="hensek-badge hensek-badge-green">In</span>
+        ) : (
+          <span className="text-gray-400 text-xs">Out</span>
+        ),
+    },
+  ];
 
   return (
-    <div className="py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-hensek-dark">Staff Directory</h1>
-        <p className="text-sm text-gray-500">View staff presence and status</p>
-      </div>
+    <div className="hensek-page-shell">
+      <PageHeader title="Staff Directory" subtitle="View staff presence and status" />
 
-      <input
-        className="hensek-input text-sm max-w-xs"
-        placeholder="Search by name or email…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      <div className="hensek-card overflow-x-auto">
-        {isLoading ? (
-          <div className="py-10 flex justify-center">
-            <div className="w-6 h-6 border-2 border-hensek-yellow border-t-transparent rounded-full animate-spin" />
+      <div className="hensek-card">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <p className="text-xs text-gray-500">{filtered.length} of {staff.length} shown</p>
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or email…"
+              className="hensek-input pl-8 w-full lg:w-64"
+            />
           </div>
-        ) : filtered.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-10">No staff found</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-border">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Staff</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 hidden sm:table-cell">Department</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Clocked In</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        {u.avatarUrl ? (
-                          <img src={u.avatarUrl} alt={u.name} className="w-8 h-8 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-hensek-yellow/30 flex items-center justify-center text-xs font-semibold text-hensek-dark">
-                            {getInitials(u.name)}
-                          </div>
-                        )}
-                        {u.isOnline && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-hensek-dark">{u.name}</p>
-                        <p className="text-xs text-gray-400">{u.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{u.departmentSlug || u.role}</td>
-                  <td className="px-4 py-3">
-                    <span className={`hensek-badge text-[10px] ${getStatusColor(u.status)}`}>{u.status}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.isClockedIn ? (
-                      <span className="hensek-badge hensek-badge-green text-[10px]">Clocked In</span>
-                    ) : (
-                      <span className="text-gray-400 text-xs">Out</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        </div>
+
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          rowKey={(u) => String(u.id)}
+          loading={isLoading}
+          empty={<EmptyState icon={<Users size={20} />} title="No staff found" />}
+        />
       </div>
     </div>
   );

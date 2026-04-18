@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost } from "@/lib/queryClient";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, cn } from "@/lib/utils";
 import { Plus, Megaphone } from "lucide-react";
 import { toast } from "sonner";
+import PageHeader from "@/components/ui/PageHeader";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Announcement {
   id: number;
@@ -19,7 +21,7 @@ const ALL_ROLES = ["md", "hr", "safety", "security", "staff"];
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg animate-fade-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="font-semibold text-hensek-dark">{title}</h2>
@@ -60,39 +62,42 @@ export default function HRAnnouncements() {
   };
 
   return (
-    <div className="py-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-hensek-dark">Announcements</h1>
-          <p className="text-sm text-gray-500">{announcements.length} published</p>
-        </div>
-        <button onClick={() => setShowAdd(true)} className="hensek-btn-primary flex items-center gap-1.5">
-          <Plus size={14} /> New
-        </button>
-      </div>
+    <div className="hensek-page-shell">
+      <PageHeader
+        title="Announcements"
+        subtitle={`${announcements.length} published`}
+        actions={
+          <button onClick={() => setShowAdd(true)} className="hensek-btn-primary flex items-center gap-1.5">
+            <Plus size={14} /> New
+          </button>
+        }
+      />
 
       {isLoading ? (
-        <div className="py-12 flex justify-center"><div className="w-6 h-6 border-2 border-hensek-yellow border-t-transparent rounded-full animate-spin" /></div>
+        <div className="hensek-card py-12 flex justify-center">
+          <div className="w-6 h-6 border-2 border-hensek-yellow border-t-transparent rounded-full animate-spin" />
+        </div>
       ) : announcements.length === 0 ? (
-        <div className="hensek-card py-16 text-center">
-          <Megaphone size={32} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">No announcements yet</p>
+        <div className="hensek-card">
+          <EmptyState icon={<Megaphone size={20} />} title="No announcements yet" description="Use New to publish updates to selected roles." />
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {announcements.map((a) => (
-            <div key={a.id} className={`hensek-card p-4 border-l-4 ${a.priority === "urgent" ? "border-red-400" : "border-hensek-yellow"}`}>
-              <div className="flex items-start justify-between gap-2 mb-1">
+            <div key={a.id} className={cn("hensek-card border-l-4", a.priority === "urgent" ? "border-red-400" : "border-hensek-yellow")}>
+              <div className="flex items-start justify-between gap-2 mb-1.5">
                 <h3 className="font-semibold text-hensek-dark">{a.title}</h3>
-                <div className="flex gap-1 flex-shrink-0">
-                  {a.priority === "urgent" && <span className="hensek-badge hensek-badge-red text-[10px]">Urgent</span>}
+                {a.priority === "urgent" && <span className="hensek-badge hensek-badge-red">Urgent</span>}
+              </div>
+              <p className="text-sm text-gray-600 mb-3 whitespace-pre-wrap">{a.content}</p>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex gap-1 flex-wrap">
                   {a.targetRoles.map((r) => (
-                    <span key={r} className="hensek-badge hensek-badge-gray text-[10px] capitalize">{r}</span>
+                    <span key={r} className="hensek-badge hensek-badge-gray capitalize">{r}</span>
                   ))}
                 </div>
+                <p className="text-[10px] text-gray-400">{a.authorName ? `By ${a.authorName} · ` : ""}{formatDateTime(a.createdAt)}</p>
               </div>
-              <p className="text-sm text-gray-600 mb-2">{a.content}</p>
-              <p className="text-[10px] text-gray-400">{a.authorName ? `By ${a.authorName} · ` : ""}{formatDateTime(a.createdAt)}</p>
             </div>
           ))}
         </div>
@@ -113,7 +118,7 @@ export default function HRAnnouncements() {
               <label className="block text-xs font-medium text-gray-600 mb-2">Priority</label>
               <div className="flex gap-2">
                 {(["normal", "urgent"] as const).map((p) => (
-                  <button key={p} type="button" onClick={() => setForm(f => ({ ...f, priority: p }))} className={`px-4 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${form.priority === p ? "bg-hensek-dark text-white" : "bg-gray-100 text-gray-600"}`}>{p}</button>
+                  <button key={p} type="button" onClick={() => setForm(f => ({ ...f, priority: p }))} className={cn("px-4 py-1.5 rounded-lg text-xs font-medium capitalize", form.priority === p ? "bg-hensek-dark text-white" : "bg-gray-100 text-gray-600")}>{p}</button>
                 ))}
               </div>
             </div>
@@ -121,7 +126,7 @@ export default function HRAnnouncements() {
               <label className="block text-xs font-medium text-gray-600 mb-2">Target Roles</label>
               <div className="flex flex-wrap gap-2">
                 {ALL_ROLES.map((r) => (
-                  <button key={r} type="button" onClick={() => toggleRole(r)} className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${form.targetRoles.includes(r) ? "bg-hensek-yellow text-hensek-dark" : "bg-gray-100 text-gray-500"}`}>{r}</button>
+                  <button key={r} type="button" onClick={() => toggleRole(r)} className={cn("px-3 py-1 rounded-lg text-xs font-medium capitalize", form.targetRoles.includes(r) ? "bg-hensek-yellow text-hensek-dark" : "bg-gray-100 text-gray-500")}>{r}</button>
                 ))}
               </div>
             </div>
