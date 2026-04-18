@@ -70,7 +70,7 @@ export default function HRStaff() {
       toast.success("Status updated");
       setOpenMenu(null);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const approve = useMutation({
@@ -80,7 +80,7 @@ export default function HRStaff() {
       qc.invalidateQueries({ queryKey: ["users", "pending"] });
       toast.success("Account approved");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const reject = useMutation({
@@ -90,13 +90,13 @@ export default function HRStaff() {
       qc.invalidateQueries({ queryKey: ["users", "pending"] });
       toast.success("Account rejected");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const addComment = useMutation({
     mutationFn: ({ id, comment }: { id: number; comment: string }) => apiPost(`/api/users/${id}/comment`, { comment }),
     onSuccess: () => { toast.success("Comment added"); setCommentTarget(null); setComment(""); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const counts = {

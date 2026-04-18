@@ -30,20 +30,22 @@ export default function MDReports() {
   const generateSafety = useMutation({
     mutationFn: (type: "weekly" | "monthly") => apiPost("/api/reports/safety/generate", { type }),
     onSuccess: () => toast.success("Safety report generated and emailed"),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const generateSecurity = useMutation({
     mutationFn: (type: "weekly" | "monthly") => apiPost("/api/reports/security/generate", { type }),
     onSuccess: () => toast.success("Security report generated and emailed"),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  const history = useMemo(
+  type HistoryRow = ReportRow & { dept: "Safety" | "Security" };
+
+  const history = useMemo<HistoryRow[]>(
     () =>
       [
-        ...safetyReports.map((r) => ({ ...r, dept: "Safety" })),
-        ...securityReports.map((r) => ({ ...r, dept: "Security" })),
+        ...safetyReports.map((r) => ({ ...r, dept: "Safety" as const })),
+        ...securityReports.map((r) => ({ ...r, dept: "Security" as const })),
       ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [safetyReports, securityReports],
   );
@@ -76,7 +78,7 @@ export default function MDReports() {
           />
         ) : (
           <ul className="divide-y divide-border/60">
-            {history.map((r: any) => (
+            {history.map((r) => (
               <li key={`${r.dept}-${r.id}`} className="py-2.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-hensek-cream flex items-center justify-center flex-shrink-0">

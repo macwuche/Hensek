@@ -49,7 +49,7 @@ export default function MDDepartments() {
       setShowAdd(false);
       setForm({ name: "", description: "", email: "" });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const del = useMutation({
@@ -58,7 +58,7 @@ export default function MDDepartments() {
       qc.invalidateQueries({ queryKey: ["departments"] });
       toast.success("Department deleted");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const typeColor: Record<string, string> = {

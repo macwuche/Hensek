@@ -64,7 +64,7 @@ export default function HRApplications() {
       setSelected(null);
       setComment("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = useMemo(() => {

@@ -23,7 +23,20 @@ export default function SafetyOverview() {
     queryFn: () => apiFetch("/api/dashboard/stats"),
   });
 
-  const { data: duties = [] } = useQuery<any[]>({
+  interface DutyRow {
+    id: number;
+    userId?: number;
+    siteId?: number;
+    status: "scheduled" | "in_progress" | "completed" | "missed" | string;
+    shiftStart?: string;
+    shiftEnd?: string;
+    staffName?: string;
+    siteName?: string;
+    user?: { name?: string };
+    site?: { name?: string };
+  }
+
+  const { data: duties = [] } = useQuery<DutyRow[]>({
     queryKey: ["duties", "today"],
     queryFn: () => apiFetch("/api/duties?date=" + new Date().toISOString().split("T")[0]),
   });
@@ -36,9 +49,9 @@ export default function SafetyOverview() {
     );
   }
 
-  const completed = duties.filter((d: any) => d.status === "completed").length;
-  const inProgress = duties.filter((d: any) => d.status === "in_progress").length;
-  const missed = duties.filter((d: any) => d.status === "missed").length;
+  const completed = duties.filter((d) => d.status === "completed").length;
+  const inProgress = duties.filter((d) => d.status === "in_progress").length;
+  const missed = duties.filter((d) => d.status === "missed").length;
   const completionRate = duties.length > 0 ? Math.round((completed / duties.length) * 100) : 0;
 
   return (
@@ -86,7 +99,7 @@ export default function SafetyOverview() {
           />
         ) : (
           <ul className="divide-y divide-border/60">
-            {duties.slice(0, 8).map((d: any) => (
+            {duties.slice(0, 8).map((d) => (
               <li key={d.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-hensek-yellow/15 flex items-center justify-center text-hensek-dark flex-shrink-0">

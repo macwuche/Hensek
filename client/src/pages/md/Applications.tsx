@@ -65,7 +65,7 @@ export default function MDApplications() {
       setSelected(null);
       setComment("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = useMemo(

@@ -51,7 +51,7 @@ export default function HRAnnouncements() {
       setShowAdd(false);
       setForm({ title: "", content: "", priority: "normal", targetRoles: ["staff"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const toggleRole = (role: string) => {

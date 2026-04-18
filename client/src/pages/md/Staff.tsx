@@ -44,7 +44,7 @@ export default function MDStaff() {
       toast.success("Status updated");
       setOpenMenu(null);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = useMemo(() => {
