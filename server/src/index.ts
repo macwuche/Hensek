@@ -114,7 +114,8 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: process.env.NODE_ENV === "production" ? "Internal server error" : err.message });
 });
 
-server.listen(PORT, "0.0.0.0", () => {
+const BIND_HOST = process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
+server.listen(PORT, BIND_HOST, () => {
   console.log(`\n🚀 Hensek server running on http://localhost:${PORT}`);
   console.log(`📊 API: http://localhost:${PORT}/api/health`);
   console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
