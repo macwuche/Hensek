@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, readdirSync, readlinkSync } from "node:fs";
 
-const PORTS = [3001, 5000];
+const PORTS = [3001, 5000, 5001];
 
 function listenersOnPorts(ports) {
   const wanted = new Set(ports.map((p) => p.toString(16).toUpperCase().padStart(4, "0")));
