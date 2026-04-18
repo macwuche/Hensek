@@ -4,6 +4,11 @@ import path from "path";
 import { storage } from "../lib/storage.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { broadcastToRole, broadcastToUser } from "../lib/websocket.js";
+import { sendEmail, buildApplicationStatusEmail, buildEscalationEmail } from "../lib/email.js";
+
+function appBaseUrl(req: { protocol: string; get: (h: string) => string | undefined }): string {
+  return process.env.APP_URL || `${req.protocol}://${req.get("host") || "localhost"}`;
+}
 
 const router = Router();
 
@@ -136,6 +141,9 @@ router.patch("/:id/review", requireRole("hr", "md"), async (req, res) => {
     md_rejected: "Your application has been rejected by the Managing Director.",
   };
 
+  const base = appBaseUrl(req);
+  const applicant = storage.getUserById(app.userId);
+
   if (statusMessages[newStatus]) {
     await storage.createNotification({
       userId: app.userId,
@@ -145,19 +153,28 @@ router.patch("/:id/review", requireRole("hr", "md"), async (req, res) => {
       link: "/dashboard/applications",
     });
     broadcastToUser(app.userId, { type: "application_update", status: newStatus });
+
+    if (applicant?.email) {
+      const e = buildApplicationStatusEmail(applicant.name, app.type, statusMessages[newStatus], `${base}/dashboard/applications`);
+      void sendEmail({ to: applicant.email, subject: e.subject, html: e.html });
+    }
   }
 
   // If escalated, notify MD
   if (newStatus === "escalated_to_md") {
-    await Promise.all(storage.getUsersByRole("md").map(md =>
-      storage.createNotification({
+    const escEmail = buildEscalationEmail(app.type, applicant?.name || "a staff member", `${base}/md/applications`);
+    await Promise.all(storage.getUsersByRole("md").map(async md => {
+      await storage.createNotification({
         userId: md.id,
         type: "escalated_application",
         title: "Application Escalated",
         body: `HR escalated a ${app.type} application for your review.`,
         link: "/md/applications",
-      })
-    ));
+      });
+      if (md.email) {
+        void sendEmail({ to: md.email, subject: escEmail.subject, html: escEmail.html });
+      }
+    }));
     broadcastToRole("md", { type: "escalated_application" });
   }
 
