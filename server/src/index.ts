@@ -96,6 +96,15 @@ app.use("/api/notifications", notificationsRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/dashboard", dashboardRouter);
 
+// ─── Dev: redirect non-API hits on this port to the Vite frontend ─────────────
+if (!IS_PROD) {
+  app.get(/^\/(?!api|ws|uploads).*/, (req, res) => {
+    const host = (req.headers.host || "").replace(/:\d+$/, "");
+    const proto = (req.headers["x-forwarded-proto"] as string) || "https";
+    res.redirect(`${proto}://${host}${req.originalUrl}`);
+  });
+}
+
 // ─── Serve React in Production ────────────────────────────────────────────────
 if (IS_PROD) {
   const __filename = fileURLToPath(import.meta.url);
