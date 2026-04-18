@@ -100,11 +100,11 @@ if (!IS_PROD) {
     const initialPath = (req.query.initialPath as string) || "/";
     res.redirect(initialPath);
   });
-  const viteProxy = createProxyMiddleware({
+  const viteProxy: express.RequestHandler = createProxyMiddleware({
     target: "http://localhost:5001",
     changeOrigin: true,
     ws: true,
-  });
+  }) as unknown as express.RequestHandler;
   app.use((req, res, next) => {
     if (
       req.path.startsWith("/api") ||
@@ -114,7 +114,7 @@ if (!IS_PROD) {
     ) {
       return next();
     }
-    return (viteProxy as any)(req, res, next);
+    return viteProxy(req, res, next);
   });
 }
 

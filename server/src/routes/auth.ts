@@ -139,7 +139,7 @@ router.get("/me", requireAuth, (req, res) => {
 // PUT /api/auth/profile
 router.put("/profile", requireAuth, async (req, res) => {
   const { name, phone, address, emergencyContact, emergencyPhone } = req.body;
-  const updated = storage.updateUser(req.user!.id, { name, phone, address, emergencyContact, emergencyPhone });
+  const updated = await storage.updateUser(req.user!.id, { name, phone, address, emergencyContact, emergencyPhone });
   if (!updated) return res.status(404).json({ error: "User not found" });
   const { passwordHash, ...safe } = updated;
   res.json(safe);
