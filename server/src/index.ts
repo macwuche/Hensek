@@ -9,6 +9,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { configurePassport } from "./lib/passport.js";
 import { setupWebSocket } from "./lib/websocket.js";
 
@@ -96,12 +97,18 @@ app.use("/api/notifications", notificationsRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/dashboard", dashboardRouter);
 
-// ─── Dev: redirect non-API hits on this port to the Vite frontend ─────────────
+// ─── Dev: proxy non-API hits on this port to the Vite frontend ────────────────
 if (!IS_PROD) {
-  app.get(/^\/(?!api|ws|uploads).*/, (req, res) => {
-    const host = (req.headers.host || "").replace(/:\d+$/, "");
-    const proto = (req.headers["x-forwarded-proto"] as string) || "https";
-    res.redirect(`${proto}://${host}${req.originalUrl}`);
+  const viteProxy = createProxyMiddleware({
+    target: "http://localhost:5001",
+    changeOrigin: true,
+    ws: true,
+  });
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/ws") || req.path.startsWith("/uploads")) {
+      return next();
+    }
+    return (viteProxy as any)(req, res, next);
   });
 }
 
